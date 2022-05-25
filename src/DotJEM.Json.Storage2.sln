@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32421.90
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotJEM.Json.Storage2", "DotJEM.Json.Storage2\DotJEM.Json.Storage2.csproj", "{4AE2A873-D73F-4029-A345-6265BA308678}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotJEM.Json.Storage2.Test", "DotJEM.Json.Storage2.Test\DotJEM.Json.Storage2.Test.csproj", "{EA688743-1005-459D-B7DF-A003F3BF2E68}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4AE2A873-D73F-4029-A345-6265BA308678}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4AE2A873-D73F-4029-A345-6265BA308678}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4AE2A873-D73F-4029-A345-6265BA308678}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4AE2A873-D73F-4029-A345-6265BA308678}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EA688743-1005-459D-B7DF-A003F3BF2E68}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EA688743-1005-459D-B7DF-A003F3BF2E68}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EA688743-1005-459D-B7DF-A003F3BF2E68}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EA688743-1005-459D-B7DF-A003F3BF2E68}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6A31B693-C99A-4DEA-9CA1-9EAC1607C3A2}
+	EndGlobalSection
+EndGlobal

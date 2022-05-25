@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="SqlServer\Statements\CreateDataTable.sql" />
+    <None Remove="SqlServer\Statements\CreateLogTable.sql" />
+    <None Remove="SqlServer\Statements\CreateSchemasTable.sql" />
+    <None Remove="SqlServer\Statements\DeleteDataTable.sql" />
+    <None Remove="SqlServer\Statements\SelectPagedFromDataTable.sql" />
+    <None Remove="SqlServer\Statements\SelectTableNames.sql" />
+    <None Remove="SqlServer\Statements\UpdateDataTable.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="SqlServer\Statements\CreateDataTable.sql">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="SqlServer\Statements\CreateLogTable.sql" />
+    <EmbeddedResource Include="SqlServer\Statements\CreateSchemasTable.sql" />
+    <EmbeddedResource Include="SqlServer\Statements\DeleteDataTable.sql" />
+    <EmbeddedResource Include="SqlServer\Statements\SelectPagedFromDataTable.sql" />
+    <EmbeddedResource Include="SqlServer\Statements\SelectTableNames.sql" />
+    <EmbeddedResource Include="SqlServer\Statements\UpdateDataTable.sql" />
+  </ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Dapper" Version="2.0.123" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+		<PackageReference Include="System.Data.SqlClient" Version="4.8.3" />
+	</ItemGroup>
+
+</Project>
