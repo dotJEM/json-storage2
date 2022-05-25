@@ -6,33 +6,65 @@ namespace DotJEM.Json.Storage2;
 
 public interface IAreaInformationCollection
 {
-    
+    Task<bool> ExistsAsync(string name);
 }
 
-public class SqlServerStorageAreaFactory
+public class SqlServerAreaInformationCollection : IAreaInformationCollection
 {
-    private const string DB_SCHEMA = "dbo";
-
+    private bool initialized;
     private readonly SqlServerStorageContext context;
-    private readonly IAreaInformationCollection areas;
 
-    public SqlServerStorageAreaFactory(SqlServerStorageContext context)
+    public SqlServerAreaInformationCollection(SqlServerStorageContext context)
     {
         this.context = context;
     }
 
-    public async Task<SqlServerStorageArea> Create(string name)
+    public async Task<bool> ExistsAsync(string name)
+    {
+        if (!initialized)
+        {
+            await this.Initialize();
+        }
+
+
+        return true;
+    }
+
+    private async Task Initialize()
     {
         await using SqlConnection connection = context.CreateConnection();
-        await using SqlTransaction transaction = connection.BeginTransaction(IsolationLevel.ReadUncommitted);
+        await connection.OpenAsync();
+        HashSet<string> schemas = await LoadSchemas(connection);
 
-        await connection.OpenAsync().ConfigureAwait(false);
 
-        CreateAreaCommand command = new (connection, new CreateAreaCommandStatements(DB_SCHEMA, name));
-        await command.ExecuteAsync();
-
-        return new SqlServerStorageArea(context, name);
     }
+
+    private async Task<HashSet<string>> LoadSchemas(SqlConnection connection)
+    {
+        await using SqlCommand command = new (SqlServerStatements.Load("SelectSchemaNames"));
+        command.Connection = connection;
+        await using SqlDataReader reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
+
+        HashSet<string> names = new();
+        while (await reader.ReadAsync())
+            names.Add(reader.GetString(0));
+        return names;
+    }
+
+    //public async Task<IAreaInformationCollection> InitializeAsync(SqlConnection connection)
+    //{
+    //    string selectSchemasCommandText = SqlServerStatements.Load("SelectSchemaNames");
+    //    await using SqlCommand command = new SqlCommand(selectSchemasCommandText);
+
+    //    await using SqlDataReader reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
+
+
+
+    //    string selectTablesCommandText = SqlServerStatements.Load("SelectTableNames");
+
+
+    //    return null;
+    //}
 
     //private async Task<IAreaInformationCollection> LoadAreaInformation()
     //{
@@ -45,37 +77,71 @@ public class SqlServerStorageAreaFactory
     //    await conn.OpenAsync().ConfigureAwait(false);
     //    SqlDataReader reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
 
-        
+
 
     //}
 }
 
-public record CreateAreaCommandStatements
+public class SqlServerStorageAreaFactory
 {
-    public string DataTable { get; }
-    public string LogTable { get; }
-    public string SchemaTable { get; }
+    private const string DB_SCHEMA = "data";
 
-    public CreateAreaCommandStatements(string schema, string name)
+    private readonly SqlServerStorageContext context;
+    private readonly IAreaInformationCollection areas;
+
+    public SqlServerStorageAreaFactory(SqlServerStorageContext context)
     {
-        Dictionary<string, string> map = new() {
-            { "schema", schema },
-            { "data_table_name", $"{name}.data" },
-            { "log_table_name", $"{name}.log" },
-            { "schema_table_name", $"{name}.schemas" }
-        };
-        DataTable = SqlServerStatements.Load("CreateDataTable", map);
-        LogTable = SqlServerStatements.Load("CreateLogTable", map);
-        SchemaTable = SqlServerStatements.Load("CreateSchemasTable", map);
+        this.context = context;
+        this.areas = new SqlServerAreaInformationCollection(context);
     }
+
+    public async Task<SqlServerStorageArea> Create(string name)
+    {
+        if (await areas.ExistsAsync(name))
+        {
+            return new SqlServerStorageArea(context, name);
+        }
+
+        await using SqlConnection connection = context.CreateConnection();
+        await using SqlTransaction transaction = connection.BeginTransaction(IsolationLevel.ReadUncommitted);
+        await connection.OpenAsync().ConfigureAwait(false);
+
+        CreateAreaCommand command = new (connection, new CreateAreaCommand.Statements(DB_SCHEMA, name));
+        await command.ExecuteAsync();
+
+        return new SqlServerStorageArea(context, name);
+    }
+
 }
+
+
 
 public class CreateAreaCommand
 {
-    private readonly SqlConnection connection;
-    private readonly CreateAreaCommandStatements statements;
+    public record Statements
+    {
+        public string DataTable { get; }
+        public string LogTable { get; }
+        public string SchemaTable { get; }
 
-    public CreateAreaCommand(SqlConnection connection, CreateAreaCommandStatements statements)
+        public Statements(string schema, string name)
+        {
+            Dictionary<string, string> map = new() {
+                { "schema", schema },
+                { "data_table_name", $"{name}.data" },
+                { "log_table_name", $"{name}.log" },
+                { "schema_table_name", $"{name}.schemas" }
+            };
+            DataTable = SqlServerStatements.Load("CreateDataTable", map);
+            LogTable = SqlServerStatements.Load("CreateLogTable", map);
+            SchemaTable = SqlServerStatements.Load("CreateSchemasTable", map);
+        }
+    }
+
+    private readonly SqlConnection connection;
+    private readonly Statements statements;
+
+    public CreateAreaCommand(SqlConnection connection, Statements statements)
     {
         this.connection = connection;
         this.statements = statements;

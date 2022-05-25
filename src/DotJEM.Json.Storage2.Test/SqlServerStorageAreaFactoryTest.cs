@@ -12,8 +12,10 @@ public class CreateAreaCommandTest
     {
         SqlConnection connection = TestSqlConnectionFactory.CreateConnection();
         await connection.OpenAsync();
-        CreateAreaCommand command = new CreateAreaCommand(connection, new CreateAreaCommandStatements("dbo", "myTable"));
+        CreateAreaCommand command = new (connection, new CreateAreaCommand.Statements("dbo", "myTable"));
         await command.ExecuteAsync();
+
+
     }
 }
 

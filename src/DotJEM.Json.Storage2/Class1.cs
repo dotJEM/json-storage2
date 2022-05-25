@@ -9,6 +9,8 @@ namespace DotJEM.Json.Storage2;
 
 public static class SqlServerStatements
 {
+    public static string Load(string input, params (string key, string value)[] values)
+        => Load(input, values.ToDictionary(kv => kv.key, kv => kv.value));
     public static string Load(string resource, IDictionary<string, string> values)
     {
         return Replacer.Replace(Resources.Load($"DotJEM.Json.Storage2.SqlServer.Statements.{resource}.sql"), values);
