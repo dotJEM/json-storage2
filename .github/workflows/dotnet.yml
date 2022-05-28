@@ -20,7 +20,7 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build src/DotJEM.Json.Storage2.sln --no-restore
     
      # Start up sqlserver
     - run: docker run -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=UUID58cf785a1c9c4bb3b62cb593d530c865!" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest
