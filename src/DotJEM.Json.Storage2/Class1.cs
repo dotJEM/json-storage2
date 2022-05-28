@@ -1,58 +1,9 @@
 ﻿using System.Collections.Concurrent;
 using System.Data;
 using System.Data.SqlClient;
-using System.Reflection;
-using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
 
 namespace DotJEM.Json.Storage2;
-
-public static class SqlServerStatements
-{
-    public static string Load(string input, params (string key, string value)[] values)
-        => Load(input, values.ToDictionary(kv => kv.key, kv => kv.value));
-    public static string Load(string resource, IDictionary<string, string> values)
-    {
-        return Replacer.Replace(Resources.Load($"DotJEM.Json.Storage2.SqlServer.Statements.{resource}.sql"), values);
-    }
-}
-
-public class Replacer
-{
-    private static readonly Regex pattern = new("@\\{(.+?)}", RegexOptions.Compiled);
-
-    public static string Replace(string input, params (string key, string value)[] values)
-        => Replace(input, values.ToDictionary(kv => kv.key, kv => kv.value));
-
-    public static string Replace(string input, IDictionary<string, string> values)
-    {
-        return pattern.Replace(input, match =>
-        {
-            string key = match.Groups[1].ToString();
-            return values[key];
-        });
-    }
-}
-
-public class Resources
-{
-    private static readonly Assembly assembly = Assembly.GetExecutingAssembly();
-
-    public static string Load(string resource)
-    {
-        // Format: "{Namespace}.{Folder}.{filename}.{Extension}"
-        string[] names = assembly.GetManifestResourceNames();
-
-        using Stream? resourceStream = assembly.GetManifestResourceStream(resource);
-        if (resourceStream == null)
-            throw new FileNotFoundException();
-
-        using StreamReader reader = new(resourceStream);
-        return reader.ReadToEnd();
-    }
-}
-
-
 
 public interface IAsyncCache<T> { }
 public class AsyncCache<T>

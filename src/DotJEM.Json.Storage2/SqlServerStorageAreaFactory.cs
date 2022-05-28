@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using System.Data;
 using System.Data.SqlClient;
+using DotJEM.Json.Storage2.SqlServer;
 
 namespace DotJEM.Json.Storage2;
 
@@ -9,21 +10,25 @@ public interface IAreaInformationCollection
     Task<bool> ExistsAsync(string name);
 }
 
+public readonly record struct AreaInfo(string Name, string DataTableName, string LogTableName, string SchemasTableName);
+
 public class SqlServerAreaInformationCollection : IAreaInformationCollection
 {
-    private bool initialized;
+    private int initialized = 0;
+    private readonly string schema;
     private readonly SqlServerStorageContext context;
 
-    public SqlServerAreaInformationCollection(SqlServerStorageContext context)
+    public SqlServerAreaInformationCollection(SqlServerStorageContext context, string schema)
     {
         this.context = context;
+        this.schema = schema;
     }
 
     public async Task<bool> ExistsAsync(string name)
     {
-        if (!initialized)
+        if (Interlocked.CompareExchange(ref initialized, 0, 1) == 0)
         {
-            await this.Initialize();
+            await Initialize();
         }
 
 
@@ -35,8 +40,33 @@ public class SqlServerAreaInformationCollection : IAreaInformationCollection
         await using SqlConnection connection = context.CreateConnection();
         await connection.OpenAsync();
         HashSet<string> schemas = await LoadSchemas(connection);
+        if(!schemas.Contains(schema))
+            return;
 
+        Dictionary<string, AreaInfo> areas = await LoadAreas(connection);
 
+    }
+
+    private async Task<Dictionary<string, AreaInfo>> LoadAreas(SqlConnection connection)
+    {
+        await using SqlCommand command = new (SqlServerStatements.Load("SelectTableNames"));
+        command.Connection = connection;
+
+        await using SqlDataReader reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
+        Dictionary<string, AreaInfo> areas = new();
+        while (await reader.ReadAsync())
+        {
+            string catalog = reader.GetString(0);
+            string schema = reader.GetString(1);
+            string tableName = reader.GetString(2);
+            string area = tableName.Substring(0, tableName.LastIndexOf('.'));
+            if(areas.ContainsKey(area))
+                continue;
+            
+            areas.Add(area, new AreaInfo(area, $"{area}.data", $"{area}.log", $"{area}.schemas"));
+        }
+
+        return areas;
     }
 
     private async Task<HashSet<string>> LoadSchemas(SqlConnection connection)
@@ -92,7 +122,7 @@ public class SqlServerStorageAreaFactory
     public SqlServerStorageAreaFactory(SqlServerStorageContext context)
     {
         this.context = context;
-        this.areas = new SqlServerAreaInformationCollection(context);
+        this.areas = new SqlServerAreaInformationCollection(context, DB_SCHEMA);
     }
 
     public async Task<SqlServerStorageArea> Create(string name)

@@ -1,17 +1,18 @@
-﻿using DotJEM.Json.Storage2;
+﻿using DotJEM.Json.Storage2.Util;
 using NUnit.Framework;
 
-namespace Systematic.Odiss.Server.Data.Test;
+namespace DotJEM.Json.Storage2.Test.Util;
 
 [TestFixture]
-public class ReplacerTest
+public class StringTemplateReplacerTest
 {
     [TestCase("foo")]
     [TestCase("value with @ in it")]
     [TestCase("value with @ and { and } in it")]
     public void Replace_NoReplacements_ReturnsOriginalValue(string value)
     {
-        Assert.That(Replacer.Replace(value, new Dictionary<string, string>()), Is.EqualTo(value));
+        IStringTemplateReplacer replacer = new StringTemplateReplacer();
+        Assert.That(replacer.Replace(value, new Dictionary<string, string>()), Is.EqualTo(value));
     }
 
     [TestCase("foo @{value} me", "value:bar", "foo bar me")]
@@ -22,6 +23,7 @@ public class ReplacerTest
         Dictionary<string, string> map = replacements.Split(',')
             .ToDictionary(s => s.Split(':').First(), s => s.Split(':').Last());
 
-        Assert.That(Replacer.Replace(input, map), Is.EqualTo(expected));
+        IStringTemplateReplacer replacer = new StringTemplateReplacer();
+        Assert.That(replacer.Replace(input, map), Is.EqualTo(expected));
     }
 }
