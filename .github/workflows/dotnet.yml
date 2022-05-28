@@ -18,7 +18,8 @@ jobs:
       with:
         dotnet-version: 5.0.x
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore src/DotJEM.Json.Storage2.sln
+      
     - name: Build
       run: dotnet build src/DotJEM.Json.Storage2.sln --no-restore
     
