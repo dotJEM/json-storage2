@@ -19,9 +19,13 @@ public class CreateAreaCommandTest
     }
 }
 
-public class TestSqlConnectionFactory
+public static class TestSqlConnectionFactory
 {
-    public static string ConnectionString = "Data Source=.\\DEV;Initial Catalog=json-storage2-test;Integrated Security=True";
+    public static string ConnectionString =
+        Environment.GetEnvironmentVariable("mssql_connection") ??
+        "Data Source=.\\DEV;Initial Catalog=json-storage2-test;Integrated Security=True";
+
+
 
     public static SqlConnection CreateConnection() => new (ConnectionString);
 }
