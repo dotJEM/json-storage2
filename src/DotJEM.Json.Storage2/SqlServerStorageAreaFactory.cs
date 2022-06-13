@@ -12,11 +12,14 @@ public interface IAreaInformationCollection
 
 public readonly record struct AreaInfo(string Name, string DataTableName, string LogTableName, string SchemasTableName);
 
+
+
 public class SqlServerAreaInformationCollection : IAreaInformationCollection
 {
-    private int initialized = 0;
+    private bool initialized = false;
     private readonly string schema;
     private readonly SqlServerStorageContext context;
+    private SemaphoreSlim padlock = new SemaphoreSlim(1, 1);
 
     public SqlServerAreaInformationCollection(SqlServerStorageContext context, string schema)
     {
@@ -26,25 +29,34 @@ public class SqlServerAreaInformationCollection : IAreaInformationCollection
 
     public async Task<bool> ExistsAsync(string name)
     {
-        if (Interlocked.CompareExchange(ref initialized, 0, 1) == 0)
+        if (!initialized)
         {
-            await Initialize();
+            await padlock.WaitAsync();
+            try
+            {
+                if (!initialized)
+                {
+                    (bool schemaExist, Dictionary<string, AreaInfo> areas) = await Initialize();
+                    initialized = true;
+                }
+            }
+            finally
+            {
+                padlock.Release();
+            }
         }
-
-
         return true;
     }
 
-    private async Task Initialize()
+    private async Task<(bool,Dictionary<string, AreaInfo>)> Initialize()
     {
         await using SqlConnection connection = context.CreateConnection();
         await connection.OpenAsync();
         HashSet<string> schemas = await LoadSchemas(connection);
         if(!schemas.Contains(schema))
-            return;
+            return (false,new ());
 
-        Dictionary<string, AreaInfo> areas = await LoadAreas(connection);
-
+        return (true, await LoadAreas(connection));
     }
 
     private async Task<Dictionary<string, AreaInfo>> LoadAreas(SqlConnection connection)
