@@ -1,30 +1,57 @@
 ﻿using System.Collections.Concurrent;
 using System.Data;
 using System.Data.SqlClient;
-using DotJEM.Json.Storage2.SqlServer;
 
-namespace DotJEM.Json.Storage2;
+namespace DotJEM.Json.Storage2.SqlServer;
 
 public interface IAreaInformationCollection
 {
+    void Add(string name);
     Task<bool> ExistsAsync(string name);
+    Task<bool> SchemaExists(string dbSchema);
 }
 
 public readonly record struct AreaInfo(string Name, string DataTableName, string LogTableName, string SchemasTableName);
-
-
 
 public class SqlServerAreaInformationCollection : IAreaInformationCollection
 {
     private bool initialized = false;
     private readonly string schema;
     private readonly SqlServerStorageContext context;
-    private SemaphoreSlim padlock = new SemaphoreSlim(1, 1);
+
+    private bool schemaExists = false;
+    private readonly ConcurrentDictionary<string, AreaInfo> areas = new();
+    private readonly SemaphoreSlim padlock = new (1, 1);
 
     public SqlServerAreaInformationCollection(SqlServerStorageContext context, string schema)
     {
         this.context = context;
         this.schema = schema;
+    }
+
+    public void Add(string name)
+    {
+        areas.TryAdd(name, new AreaInfo(name, $"{name}.data", $"{name}.log", $"{name}.schemas"));
+    }
+
+    public async Task<bool> SchemaExists(string dbSchema)
+    {
+        if (!initialized)
+        {
+            await padlock.WaitAsync();
+            try
+            {
+                if (!initialized)
+                {
+                    await Initialize();
+                }
+            }
+            finally
+            {
+                padlock.Release();
+            }
+        }
+        return schemaExists;
     }
 
     public async Task<bool> ExistsAsync(string name)
@@ -36,8 +63,7 @@ public class SqlServerAreaInformationCollection : IAreaInformationCollection
             {
                 if (!initialized)
                 {
-                    (bool schemaExist, Dictionary<string, AreaInfo> areas) = await Initialize();
-                    initialized = true;
+                    await Initialize();
                 }
             }
             finally
@@ -45,45 +71,45 @@ public class SqlServerAreaInformationCollection : IAreaInformationCollection
                 padlock.Release();
             }
         }
-        return true;
+        return areas.TryGetValue(name, out _);
     }
 
-    private async Task<(bool,Dictionary<string, AreaInfo>)> Initialize()
+    private async Task Initialize()
     {
         await using SqlConnection connection = context.CreateConnection();
         await connection.OpenAsync();
         HashSet<string> schemas = await LoadSchemas(connection);
-        if(!schemas.Contains(schema))
-            return (false,new ());
+        if (!schemas.Contains(schema))
+            return;
 
-        return (true, await LoadAreas(connection));
+        schemaExists = true;
+        await LoadAreas(connection);
+        initialized = true;
     }
 
-    private async Task<Dictionary<string, AreaInfo>> LoadAreas(SqlConnection connection)
+    private async Task LoadAreas(SqlConnection connection)
     {
-        await using SqlCommand command = new (SqlServerStatements.Load("SelectTableNames"));
+        await using SqlCommand command = new(SqlServerStatements.Load("SelectTableNames"));
         command.Connection = connection;
 
         await using SqlDataReader reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
         Dictionary<string, AreaInfo> areas = new();
         while (await reader.ReadAsync())
         {
-            string catalog = reader.GetString(0);
-            string schema = reader.GetString(1);
+            //string catalog = reader.GetString(0);
+            //string schema = reader.GetString(1);
             string tableName = reader.GetString(2);
             string area = tableName.Substring(0, tableName.LastIndexOf('.'));
-            if(areas.ContainsKey(area))
+            if (areas.ContainsKey(area))
                 continue;
-            
-            areas.Add(area, new AreaInfo(area, $"{area}.data", $"{area}.log", $"{area}.schemas"));
-        }
 
-        return areas;
+            this.Add(area);
+        }
     }
 
     private async Task<HashSet<string>> LoadSchemas(SqlConnection connection)
     {
-        await using SqlCommand command = new (SqlServerStatements.Load("SelectSchemaNames"));
+        await using SqlCommand command = new(SqlServerStatements.Load("SelectSchemaNames"));
         command.Connection = connection;
         await using SqlDataReader reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
 
@@ -134,7 +160,7 @@ public class SqlServerStorageAreaFactory
     public SqlServerStorageAreaFactory(SqlServerStorageContext context)
     {
         this.context = context;
-        this.areas = new SqlServerAreaInformationCollection(context, DB_SCHEMA);
+        areas = new SqlServerAreaInformationCollection(context, DB_SCHEMA);
     }
 
     public async Task<SqlServerStorageArea> Create(string name)
@@ -143,24 +169,71 @@ public class SqlServerStorageAreaFactory
         {
             return new SqlServerStorageArea(context, name);
         }
-
         await using SqlConnection connection = context.CreateConnection();
         await using SqlTransaction transaction = connection.BeginTransaction(IsolationLevel.ReadUncommitted);
         await connection.OpenAsync().ConfigureAwait(false);
 
-        CreateAreaCommand command = new (connection, new CreateAreaCommand.Statements(DB_SCHEMA, name));
-        await command.ExecuteAsync();
-
+        IDbCommandList command = (await areas.SchemaExists(DB_SCHEMA))
+            ? new CreateAreaCommand(connection, DB_SCHEMA, name)
+            : new CreateAreaAndSchemaCommand(connection, DB_SCHEMA, name);
+        await command.ExecuteAsync(transaction).ConfigureAwait(false);
+        await transaction.CommitAsync().ConfigureAwait(false);
+        areas.Add(name);
         return new SqlServerStorageArea(context, name);
     }
 
 }
 
-
-
-public class CreateAreaCommand
+public interface IDbCommandList
 {
-    public record Statements
+    Task ExecuteAsync(SqlTransaction transaction);
+}
+
+public class CreateAreaAndSchemaCommand : IDbCommandList
+{
+    private record Statements
+    {
+        public string CreateSchema { get; }
+
+        public Statements(string schema)
+        {
+            Dictionary<string, string> map = new() {
+                { "schema", schema }
+            };
+            CreateSchema = SqlServerStatements.Load("CreateSchema", map);
+        }
+    }
+
+
+    private readonly CreateAreaCommand createAreaCommand;
+    private readonly SqlConnection connection;
+    private readonly Statements statements;
+
+    public CreateAreaAndSchemaCommand(SqlConnection connection, string schema, string name)
+    {
+        this.createAreaCommand = new CreateAreaCommand(connection, schema, name);
+        this.statements = new Statements(name);
+        this.connection = connection;
+    }
+
+    public async Task ExecuteAsync(SqlTransaction transaction)
+    {
+        //SqlTransaction transaction = (SqlTransaction)await connection.BeginTransactionAsync(IsolationLevel.ReadUncommitted).ConfigureAwait(false);
+        await CreateSchema(transaction).ConfigureAwait(false);
+        await createAreaCommand.ExecuteAsync(transaction).ConfigureAwait(false);
+    }
+    public async Task CreateSchema(SqlTransaction transaction)
+    {
+        await using SqlCommand command = new(statements.CreateSchema);
+        command.Connection = connection;
+        command.Transaction = transaction;
+        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+    }
+}
+
+public class CreateAreaCommand : IDbCommandList
+{
+    private record Statements
     {
         public string DataTable { get; }
         public string LogTable { get; }
@@ -183,15 +256,15 @@ public class CreateAreaCommand
     private readonly SqlConnection connection;
     private readonly Statements statements;
 
-    public CreateAreaCommand(SqlConnection connection, Statements statements)
+    public CreateAreaCommand(SqlConnection connection, string schema, string name)
     {
         this.connection = connection;
-        this.statements = statements;
+        this.statements = new Statements(schema, name);
     }
-    
-    public async Task ExecuteAsync()
+
+    public async Task ExecuteAsync(SqlTransaction transaction)
     {
-        SqlTransaction transaction = (SqlTransaction)await connection.BeginTransactionAsync(IsolationLevel.ReadUncommitted).ConfigureAwait(false);
+        //SqlTransaction transaction = (SqlTransaction)await connection.BeginTransactionAsync(IsolationLevel.ReadUncommitted).ConfigureAwait(false);
         await CreateDataTableAsync(transaction).ConfigureAwait(false);
         await CreateLogTableAsync(transaction).ConfigureAwait(false);
         await CreateSchemaTableAsync(transaction).ConfigureAwait(false);

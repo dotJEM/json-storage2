@@ -1,4 +1,5 @@
 ﻿using System.Data.SqlClient;
+using DotJEM.Json.Storage2.SqlServer;
 using NUnit.Framework;
 
 namespace DotJEM.Json.Storage2.Test;
@@ -10,10 +11,11 @@ public class CreateAreaCommandTest
     public async Task EnsureLogTable_NoTableExists_ShouldCreateTable()
     {
         SqlConnection connection = TestSqlConnectionFactory.CreateConnection();
+        SqlTransaction transaction = connection.BeginTransaction();
         await connection.OpenAsync();
         
-        CreateAreaCommand command = new (connection, new CreateAreaCommand.Statements("dbo", "myTable"));
-        await command.ExecuteAsync();
+        CreateAreaCommand command = new (connection, "dbo", "myTable");
+        await command.ExecuteAsync(transaction);
 
 
 
