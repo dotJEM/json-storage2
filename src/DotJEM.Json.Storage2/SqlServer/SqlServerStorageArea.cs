@@ -4,20 +4,20 @@ namespace DotJEM.Json.Storage2.SqlServer;
 
 public class SqlServerStorageArea : IStorageArea
 {
-    private readonly SqlServerAreaStateManager stateManager;
+    private readonly SqlServerAreaStateManager areaState;
     private readonly SqlServerStorageContext context;
 
     public string Name { get; }
 
-    public SqlServerStorageArea(SqlServerStorageContext context, SqlServerAreaStateManager stateManager)
+    public SqlServerStorageArea(SqlServerStorageContext context, SqlServerAreaStateManager areaState)
     {
         this.context = context;
-        this.stateManager = stateManager;
+        this.areaState = areaState;
     }
 
     public async IAsyncEnumerable<StorageObject> GetAsync()
     {
-        if (!stateManager.Exists)
+        if (!areaState.Exists)
             yield break;
 
 
@@ -28,7 +28,7 @@ public class SqlServerStorageArea : IStorageArea
 
     public async IAsyncEnumerable<StorageObject> GetAsync(long skip, int take = 100)
     {
-        if (!stateManager.Exists)
+        if (!areaState.Exists)
             yield break;
 
         throw new NotImplementedException();
@@ -36,7 +36,7 @@ public class SqlServerStorageArea : IStorageArea
 
     public async Task<StorageObject?> GetAsync(Guid id)
     {
-        if (!stateManager.Exists)
+        if (!areaState.Exists)
             return null;
 
         throw new NotImplementedException();
@@ -49,7 +49,8 @@ public class SqlServerStorageArea : IStorageArea
 
     public async Task<StorageObject> InsertAsync(StorageObject obj)
     {
-        await stateManager.Ensure();
+        await areaState.Ensure();
+
 
 
         throw new NotImplementedException();
