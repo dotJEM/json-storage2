@@ -30,8 +30,7 @@ public class SqlServerStorageContextIntegrationTest
     {
         SqlServerStorageContext context = await SqlServerStorageContext.Create(TestSqlConnectionFactory.ConnectionString);
         IStorageArea area = await context.AreaAsync("test");
-        StorageObject storageObject = new StorageObject();
-        await area.InsertAsync(new JObject());
+        await area.InsertAsync("na", new JObject());
     }
 
     [Test]
@@ -39,7 +38,6 @@ public class SqlServerStorageContextIntegrationTest
     {
         SqlServerStorageContext context = await SqlServerStorageContext.Create(TestSqlConnectionFactory.ConnectionString, "fox");
         IStorageArea area = await context.AreaAsync("test");
-        StorageObject storageObject = new StorageObject();
-        await area.InsertAsync(new JObject());
+        await area.InsertAsync("na",new JObject());
     }
 }

@@ -398,15 +398,16 @@ public class SqlServerAreaStateManager
 {
     private bool created;
     private readonly ISqlServerConnectionFactory connectionFactory;
-    private readonly string schema;
     private readonly SemaphoreSlim padlock = new(1, 1);
+
+    public string Schema { get; }
     public string AreaName { get; }
     public bool Exists => created;
 
     public SqlServerAreaStateManager(ISqlServerConnectionFactory connectionFactory, string schema, string area, bool created)
     {
         this.connectionFactory = connectionFactory;
-        this.schema = schema;
+        this.Schema = schema;
         this.AreaName = area;
         this.created = created;
     }
@@ -419,7 +420,7 @@ public class SqlServerAreaStateManager
         await padlock.WaitAsync();
 
         Dictionary<string, string> map = new() {
-            { "schema", schema },
+            { "schema", Schema },
             { "data_table_name", $"{AreaName}.data" },
             { "log_table_name", $"{AreaName}.log" },
             { "schema_table_name", $"{AreaName}.schemas" }
