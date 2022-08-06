@@ -5,24 +5,6 @@ using NUnit.Framework;
 
 namespace DotJEM.Json.Storage2.Test;
 
-[TestFixture]
-public class CreateAreaCommandTest
-{
-    [Test]
-    public async Task EnsureLogTable_NoTableExists_ShouldCreateTable()
-    {
-        SqlConnection connection = TestSqlConnectionFactory.CreateConnection();
-        await connection.OpenAsync();
-        SqlTransaction transaction = connection.BeginTransaction();
-
-        CreateAreaCommand command = new (connection, "dbo", "myTable");
-        await command.ExecuteAsync(transaction);
-
-
-
-    }
-}
-
 public class SqlServerStorageContextIntegrationTest
 {
     [Test]
@@ -38,6 +20,8 @@ public class SqlServerStorageContextIntegrationTest
     {
         SqlServerStorageContext context = await SqlServerStorageContext.Create(TestSqlConnectionFactory.ConnectionString, "fox");
         IStorageArea area = await context.AreaAsync("test");
-        await area.InsertAsync("na",new JObject());
+        StorageObject so = await area.InsertAsync("na",new JObject());
+
+        Console.WriteLine(so);
     }
 }

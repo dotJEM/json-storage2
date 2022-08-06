@@ -63,16 +63,16 @@ public class SqlServerStorageArea : IStorageArea
         await using SqlTransaction transaction = connection.BeginTransaction();
         command.Transaction = transaction;
         
+        DateTime timeStamp = DateTime.UtcNow;;
         command.Parameters.Add("@contentType", SqlDbType.NVarChar).Value = obj.ConcentType;
-        command.Parameters.Add("@timestamp", SqlDbType.DateTime).Value = DateTime.UtcNow;
+        command.Parameters.Add("@timestamp", SqlDbType.DateTime).Value = timeStamp;
         command.Parameters.Add("@data", SqlDbType.NVarChar).Value = obj.Data.ToString(Formatting.None);
 
-        await command.ExecuteNonQueryAsync().ConfigureAwait(false);
+        Guid id = (Guid)(await command.ExecuteScalarAsync().ConfigureAwait(false) ?? throw new InvalidOperationException());
 
         await transaction.CommitAsync().ConfigureAwait(false);
 
-        //TODO: Fill with outputs.
-        return obj;
+        return obj with { Id = id, Created = timeStamp, Updated = timeStamp, Version = 0 };
     }
 
 

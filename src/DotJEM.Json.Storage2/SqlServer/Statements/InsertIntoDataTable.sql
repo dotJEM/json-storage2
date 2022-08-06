@@ -22,6 +22,8 @@ INSERT INTO [@{schema}].[@{data_table_name}]
            ,[Created]
            ,[Updated]
            ,[Data])
+     OUTPUT 
+            INSERTED.[Id]
      VALUES
            (@contentType
            ,0
