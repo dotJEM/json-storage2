@@ -13,7 +13,7 @@
     <None Remove="SqlServer\Statements\CreateSchemasTable.sql" />
     <None Remove="SqlServer\Statements\DeleteDataTable.sql" />
     <None Remove="SqlServer\Statements\InsertIntoDataTable.sql" />
-    <None Remove="SqlServer\Statements\SelectPagedFromDataTable.sql" />
+    <None Remove="SqlServer\Statements\SelectFromDataTable.sql" />
     <None Remove="SqlServer\Statements\SelectSchemaExists.sql" />
     <None Remove="SqlServer\Statements\SelectSchemaNames.sql" />
     <None Remove="SqlServer\Statements\SelectTableNames.sql" />
@@ -31,7 +31,7 @@
     <EmbeddedResource Include="SqlServer\Statements\CreateSchemasTable.sql" />
     <EmbeddedResource Include="SqlServer\Statements\DeleteDataTable.sql" />
     <EmbeddedResource Include="SqlServer\Statements\InsertIntoDataTable.sql" />
-    <EmbeddedResource Include="SqlServer\Statements\SelectPagedFromDataTable.sql" />
+    <EmbeddedResource Include="SqlServer\Statements\SelectFromDataTable.sql" />
     <EmbeddedResource Include="SqlServer\Statements\SelectSchemaExists.sql" />
     <EmbeddedResource Include="SqlServer\Statements\SelectSchemaNames.sql" />
     <EmbeddedResource Include="SqlServer\Statements\SelectTableNames.sql" />

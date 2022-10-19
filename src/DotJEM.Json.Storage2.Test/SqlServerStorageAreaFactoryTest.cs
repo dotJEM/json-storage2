@@ -23,5 +23,8 @@ public class SqlServerStorageContextIntegrationTest
         StorageObject so = await area.InsertAsync("na",new JObject());
 
         Console.WriteLine(so);
+
+        StorageObject? so2 = await area.GetAsync(so.Id);
+        Console.WriteLine(so2);
     }
 }

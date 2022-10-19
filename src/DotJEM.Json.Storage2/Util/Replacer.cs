@@ -34,3 +34,8 @@ public class StringTemplateReplacer : IStringTemplateReplacer
         });
     }
 }
+
+public interface ITemplateValueValidator
+{
+
+}

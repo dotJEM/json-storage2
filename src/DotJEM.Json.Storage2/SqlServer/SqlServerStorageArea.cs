@@ -42,7 +42,40 @@ public class SqlServerStorageArea : IStorageArea
         if (!stateManager.Exists)
             return null;
 
-        throw new NotImplementedException();
+        string commandText = SqlServerStatements.Load("SelectFromDataTable", "byid",
+            ("schema", stateManager.Schema),
+            ("data_table_name", $"{stateManager.AreaName}.data"));
+
+        await using SqlConnection connection = context.ConnectionFactory.Create();
+        await using SqlCommand command = new SqlCommand(commandText, connection);
+        await connection.OpenAsync().ConfigureAwait(false);
+        command.Parameters.Add("@id", SqlDbType.UniqueIdentifier).Value = id;
+
+        await using SqlDataReader? reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
+        return RunDataReader(reader).FirstOrDefault();
+    }
+
+
+    private IEnumerable<StorageObject> RunDataReader(SqlDataReader reader)
+    {
+        int idColumn = reader.GetOrdinal(nameof(StorageObject.Id));
+        int contentTypeColumn = reader.GetOrdinal(nameof(StorageObject.ContentType));
+        int versionColumn = reader.GetOrdinal(nameof(StorageObject.Version));
+        int createdColumn = reader.GetOrdinal(nameof(StorageObject.Created));
+        int updatedColumn = reader.GetOrdinal(nameof(StorageObject.Updated));
+        int dataColumn = reader.GetOrdinal(nameof(StorageObject.Data));
+        while (reader.Read())
+        {
+            JObject json = JObject.Parse(reader.GetString(dataColumn));
+            yield return new StorageObject(
+                reader.GetString(contentTypeColumn),
+                reader.GetGuid(idColumn),
+                reader.GetInt32(versionColumn),
+                reader.GetDateTime(createdColumn),
+                reader.GetDateTime(updatedColumn),
+                json
+            );
+        }
     }
 
     public Task<StorageObject> InsertAsync(string contentType, JObject obj)
@@ -54,7 +87,10 @@ public class SqlServerStorageArea : IStorageArea
     {
         await stateManager.Ensure();
 
-        string commandText = SqlServerStatements.Load("InsertIntoDataTable", "normal", ("schema", stateManager.Schema), ("data_table_name", $"{stateManager.AreaName}.data"));
+        string commandText = SqlServerStatements.Load("InsertIntoDataTable", "normal", 
+            ("schema", stateManager.Schema),
+            ("data_table_name", $"{stateManager.AreaName}.data"),
+            ("log_table_name", $"{stateManager.AreaName}.log"));
 
         await using SqlConnection connection = context.ConnectionFactory.Create();
         await using SqlCommand command = new SqlCommand(commandText, connection);
@@ -64,7 +100,7 @@ public class SqlServerStorageArea : IStorageArea
         command.Transaction = transaction;
         
         DateTime timeStamp = DateTime.UtcNow;;
-        command.Parameters.Add("@contentType", SqlDbType.NVarChar).Value = obj.ConcentType;
+        command.Parameters.Add("@contentType", SqlDbType.NVarChar).Value = obj.ContentType;
         command.Parameters.Add("@timestamp", SqlDbType.DateTime).Value = timeStamp;
         command.Parameters.Add("@data", SqlDbType.NVarChar).Value = obj.Data.ToString(Formatting.None);
 
@@ -75,12 +111,15 @@ public class SqlServerStorageArea : IStorageArea
         return obj with { Id = id, Created = timeStamp, Updated = timeStamp, Version = 0 };
     }
 
-
+    // This is very back and forth, but maybe switching back to binary would be better for storage and retrieval speeds. In the end, maybe this should be a 
+    // external choice.
+    // https://learn.microsoft.com/da-dk/archive/blogs/sqlserverstorageengine/storing-json-in-sql-server#compressed-json-storage
 
     public Task<StorageObject> UpdateAsync(Guid id, StorageObject obj)
     {
         throw new NotImplementedException();
     }
+
     public Task<StorageObject> UpdateAsync(Guid id, JObject obj)
     {
         throw new NotImplementedException();

@@ -22,6 +22,8 @@ INSERT INTO [@{schema}].[@{data_table_name}]
            ,[Created]
            ,[Updated]
            ,[Data])
+     OUTPUT 'CREATE', INSERTED.[Id], INSERTED.[Version], @timestamp, INSERTED.[Data] 
+		INTO [dbo].[@{log_table_name}]([Event], [Id], [Version], [Time], [Data])
      OUTPUT 
             INSERTED.[Id]
      VALUES
