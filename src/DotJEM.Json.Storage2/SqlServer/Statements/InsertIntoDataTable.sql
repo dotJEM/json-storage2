@@ -1,21 +1,4 @@
-﻿--start:full
-INSERT INTO [@{schema}].[@{data_table_name}]
-           ([Id]
-           ,[Version]
-           ,[ContentType]
-           ,[Created]
-           ,[Updated]
-           ,[Data])
-     VALUES
-           (@id
-           ,@version
-           ,@contentType
-           ,@created
-           ,@updated
-           ,@data);
---end:full
-
---start:normal
+﻿--start:normal
 INSERT INTO [@{schema}].[@{data_table_name}]
            ([ContentType]
            ,[Version]
@@ -23,7 +6,7 @@ INSERT INTO [@{schema}].[@{data_table_name}]
            ,[Updated]
            ,[Data])
      OUTPUT 'CREATE', INSERTED.[Id], INSERTED.[Version], @timestamp, INSERTED.[Data] 
-		INTO [dbo].[@{log_table_name}]([Event], [Id], [Version], [Time], [Data])
+		INTO [@{schema}].[@{log_table_name}]([Event], [Id], [Version], [Time], [Data])
      OUTPUT 
             INSERTED.[Id]
      VALUES

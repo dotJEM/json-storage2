@@ -13,6 +13,6 @@ public interface IStorageArea
     Task<StorageObject> InsertAsync(string contentType, JObject obj);
     Task<StorageObject> InsertAsync(StorageObject obj);
     Task<StorageObject> UpdateAsync(Guid id, JObject obj);
-    Task<StorageObject> UpdateAsync(Guid id, StorageObject obj);
+    Task<StorageObject> UpdateAsync(StorageObject obj);
     Task<StorageObject?> DeleteAsync(Guid id);
 }

@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using DotJEM.Json.Storage2.SqlServer.Initialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -42,17 +43,22 @@ public class SqlServerStorageArea : IStorageArea
         if (!stateManager.Exists)
             return null;
 
-        string commandText = SqlServerStatements.Load("SelectFromDataTable", "byid",
-            ("schema", stateManager.Schema),
-            ("data_table_name", $"{stateManager.AreaName}.data"));
+        using ISqlServerCommand cmd = context.CommandBuilder
+            .From("SelectFromDataTable", "byid")
+            .Replace(
+                ("schema", stateManager.Schema),
+                ("data_table_name", $"{stateManager.AreaName}.data")
+            )
+            .Parameters(("id", id))
+            .Build();
 
-        await using SqlConnection connection = context.ConnectionFactory.Create();
-        await using SqlCommand command = new SqlCommand(commandText, connection);
-        await connection.OpenAsync().ConfigureAwait(false);
-        command.Parameters.Add("@id", SqlDbType.UniqueIdentifier).Value = id;
+        using ISqlServerDataReader<StorageObject> read = await cmd
+            .ExecuteReaderAsync(
+                new[] { "Id", "ContentType", "Version", "Created", "Updated", "Data" },
+                values => new StorageObject((string)values[1], (Guid)values[0], (int)values[2], (DateTime)values[3], (DateTime)values[4], JObject.Parse((string)values[5])),
+                CancellationToken.None);
 
-        await using SqlDataReader? reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
-        return RunDataReader(reader).FirstOrDefault();
+        return read.FirstOrDefault();
     }
 
 
@@ -79,35 +85,27 @@ public class SqlServerStorageArea : IStorageArea
     }
 
     public Task<StorageObject> InsertAsync(string contentType, JObject obj)
-    {
-        return InsertAsync(new StorageObject(contentType, Guid.Empty, 0, DateTime.MinValue, DateTime.MinValue, obj));
-    }
+        => InsertAsync(new StorageObject(contentType, Guid.Empty, 0, DateTime.MinValue, DateTime.MinValue, obj));
 
     public async Task<StorageObject> InsertAsync(StorageObject obj)
     {
         await stateManager.Ensure();
-
-        string commandText = SqlServerStatements.Load("InsertIntoDataTable", "normal", 
-            ("schema", stateManager.Schema),
-            ("data_table_name", $"{stateManager.AreaName}.data"),
-            ("log_table_name", $"{stateManager.AreaName}.log"));
-
-        await using SqlConnection connection = context.ConnectionFactory.Create();
-        await using SqlCommand command = new SqlCommand(commandText, connection);
-
-        await connection.OpenAsync().ConfigureAwait(false);
-        await using SqlTransaction transaction = connection.BeginTransaction();
-        command.Transaction = transaction;
+        DateTime timeStamp = DateTime.UtcNow; ;
+        using ISqlServerCommand cmd = context.CommandBuilder
+            .From("InsertIntoDataTable", "normal")
+            .Replace(
+                ("schema", stateManager.Schema),
+                ("data_table_name", $"{stateManager.AreaName}.data"),
+                ("log_table_name", $"{stateManager.AreaName}.log")
+            )
+            .Parameters(
+                ("contentType", obj.ContentType),
+                ("timestamp", timeStamp),
+                ("data", obj.Data.ToString(Formatting.None))
+            )
+            .Build();
         
-        DateTime timeStamp = DateTime.UtcNow;;
-        command.Parameters.Add("@contentType", SqlDbType.NVarChar).Value = obj.ContentType;
-        command.Parameters.Add("@timestamp", SqlDbType.DateTime).Value = timeStamp;
-        command.Parameters.Add("@data", SqlDbType.NVarChar).Value = obj.Data.ToString(Formatting.None);
-
-        Guid id = (Guid)(await command.ExecuteScalarAsync().ConfigureAwait(false) ?? throw new InvalidOperationException());
-
-        await transaction.CommitAsync().ConfigureAwait(false);
-
+        Guid id= await cmd.ExecuteScalarAsync<Guid>(CancellationToken.None).ConfigureAwait(false);
         return obj with { Id = id, Created = timeStamp, Updated = timeStamp, Version = 0 };
     }
 
@@ -115,15 +113,48 @@ public class SqlServerStorageArea : IStorageArea
     // external choice.
     // https://learn.microsoft.com/da-dk/archive/blogs/sqlserverstorageengine/storing-json-in-sql-server#compressed-json-storage
 
-    public Task<StorageObject> UpdateAsync(Guid id, StorageObject obj)
+    public async Task<StorageObject> UpdateAsync(StorageObject obj)
     {
-        throw new NotImplementedException();
+        await stateManager.Ensure();
+
+        string commandText = SqlServerStatements.Load("UpdateDataTable",
+            ("schema", stateManager.Schema),
+            ("data_table_name", $"{stateManager.AreaName}.data"),
+            ("log_table_name", $"{stateManager.AreaName}.log"));
+
+        await using SqlConnection connection = context.ConnectionFactory.Create();
+        await using SqlCommand command = new SqlCommand(commandText, connection);
+        DateTime timeStamp = DateTime.UtcNow; ;
+        command.Parameters.Add("@id", SqlDbType.UniqueIdentifier).Value = obj.Id;
+        command.Parameters.Add("@timestamp", SqlDbType.DateTime).Value = timeStamp;
+        command.Parameters.Add("@data", SqlDbType.NVarChar).Value = obj.Data.ToString(Formatting.None);
+
+        await connection.OpenAsync().ConfigureAwait(false);
+        await using SqlTransaction transaction = connection.BeginTransaction();
+        command.Transaction = transaction;
+        await using SqlDataReader? reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
+        StorageObject data = RunDataReaderForUpdate(reader, obj) ?? throw new FileNotFoundException();
+        await reader.CloseAsync();
+        await transaction.CommitAsync().ConfigureAwait(false);
+
+        return data;
+    }
+
+    private  StorageObject? RunDataReaderForUpdate(SqlDataReader reader, StorageObject update)
+    {
+        int contentTypeColumn = reader.GetOrdinal(nameof(StorageObject.ContentType));
+        int versionColumn = reader.GetOrdinal(nameof(StorageObject.Version));
+        int createdColumn = reader.GetOrdinal(nameof(StorageObject.Created));
+        while (reader.Read())
+        {
+            return update with { ContentType = reader.GetString(contentTypeColumn), Version = reader.GetInt32(versionColumn), Created = reader.GetDateTime(createdColumn) };
+        }
+
+        return null;
     }
 
     public Task<StorageObject> UpdateAsync(Guid id, JObject obj)
-    {
-        throw new NotImplementedException();
-    }
+        => UpdateAsync(new StorageObject(string.Empty, id, -1, DateTime.MinValue, DateTime.MinValue, obj));
 
     public Task<StorageObject?> DeleteAsync(Guid id)
     {

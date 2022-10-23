@@ -18,13 +18,21 @@ public class SqlServerStorageContextIntegrationTest
     [Test]
     public async Task EnsureLogTable_NoTableExists_ShouldCreateTables()
     {
-        SqlServerStorageContext context = await SqlServerStorageContext.Create(TestSqlConnectionFactory.ConnectionString, "fox");
+        SqlServerStorageContext context = await SqlServerStorageContext
+            .Create(TestSqlConnectionFactory.ConnectionString, "fox");
         IStorageArea area = await context.AreaAsync("test");
         StorageObject so = await area.InsertAsync("na",new JObject());
 
         Console.WriteLine(so);
-
+        
         StorageObject? so2 = await area.GetAsync(so.Id);
         Console.WriteLine(so2);
+
+        StorageObject so3 = await area.UpdateAsync(so.Id, JObject.FromObject(new { foo = "Fax" }));
+        Console.WriteLine(so3);
+
+        StorageObject? so4 = await area.GetAsync(so.Id);
+        Console.WriteLine(so4);
+
     }
 }

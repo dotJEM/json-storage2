@@ -3,6 +3,6 @@
       ,[Updated] = @timestamp
       ,[Data] = @data
 	  OUTPUT 'UPDATE', DELETED.[Id], DELETED.[Version], @timestamp, DELETED.[Data] 
-		INTO [dbo].[@{log_table_name}]([Event], [Id], [Version], [Time], [Data])
-	  OUTPUT INSERTED.*
+		INTO [@{schema}].[@{log_table_name}]([Event], [Id], [Version], [Time], [Data])
+	  OUTPUT INSERTED.[ContentType], INSERTED.[Version], INSERTED.[Created]
  WHERE [Id] = @id
