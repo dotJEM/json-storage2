@@ -117,7 +117,9 @@ public class SqlServerCommandBuilder : ISqlServerCommandBuilder
 
     public ISqlServerCommand Build()
     {
-        string commandText = SqlServerStatements.Load(resource, section, replacements);
+        string commandText = section == null
+            ? SqlServerStatements.Load(resource, replacements)
+            : SqlServerStatements.Load(resource, section, replacements);
 
         SqlConnection connection = connectionFactory.Create();
         SqlCommand command = new SqlCommand(commandText, connection);

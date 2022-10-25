@@ -61,29 +61,6 @@ public class SqlServerStorageArea : IStorageArea
         return read.FirstOrDefault();
     }
 
-
-    private IEnumerable<StorageObject> RunDataReader(SqlDataReader reader)
-    {
-        int idColumn = reader.GetOrdinal(nameof(StorageObject.Id));
-        int contentTypeColumn = reader.GetOrdinal(nameof(StorageObject.ContentType));
-        int versionColumn = reader.GetOrdinal(nameof(StorageObject.Version));
-        int createdColumn = reader.GetOrdinal(nameof(StorageObject.Created));
-        int updatedColumn = reader.GetOrdinal(nameof(StorageObject.Updated));
-        int dataColumn = reader.GetOrdinal(nameof(StorageObject.Data));
-        while (reader.Read())
-        {
-            JObject json = JObject.Parse(reader.GetString(dataColumn));
-            yield return new StorageObject(
-                reader.GetString(contentTypeColumn),
-                reader.GetGuid(idColumn),
-                reader.GetInt32(versionColumn),
-                reader.GetDateTime(createdColumn),
-                reader.GetDateTime(updatedColumn),
-                json
-            );
-        }
-    }
-
     public Task<StorageObject> InsertAsync(string contentType, JObject obj)
         => InsertAsync(new StorageObject(contentType, Guid.Empty, 0, DateTime.MinValue, DateTime.MinValue, obj));
 
@@ -116,41 +93,29 @@ public class SqlServerStorageArea : IStorageArea
     public async Task<StorageObject> UpdateAsync(StorageObject obj)
     {
         await stateManager.Ensure();
-
-        string commandText = SqlServerStatements.Load("UpdateDataTable",
-            ("schema", stateManager.Schema),
-            ("data_table_name", $"{stateManager.AreaName}.data"),
-            ("log_table_name", $"{stateManager.AreaName}.log"));
-
-        await using SqlConnection connection = context.ConnectionFactory.Create();
-        await using SqlCommand command = new SqlCommand(commandText, connection);
         DateTime timeStamp = DateTime.UtcNow; ;
-        command.Parameters.Add("@id", SqlDbType.UniqueIdentifier).Value = obj.Id;
-        command.Parameters.Add("@timestamp", SqlDbType.DateTime).Value = timeStamp;
-        command.Parameters.Add("@data", SqlDbType.NVarChar).Value = obj.Data.ToString(Formatting.None);
+        using ISqlServerCommand cmd = context.CommandBuilder
+            .From("UpdateDataTable")
+            .Replace(
+                ("schema", stateManager.Schema),
+                ("data_table_name", $"{stateManager.AreaName}.data"),
+                ("log_table_name", $"{stateManager.AreaName}.log")
+            )
+            .Parameters(
+                ("id", obj.Id),
+                ("timestamp", timeStamp),
+                ("data", obj.Data.ToString(Formatting.None))
+            )
+            .Build();
 
-        await connection.OpenAsync().ConfigureAwait(false);
-        await using SqlTransaction transaction = connection.BeginTransaction();
-        command.Transaction = transaction;
-        await using SqlDataReader? reader = await command.ExecuteReaderAsync().ConfigureAwait(false);
-        StorageObject data = RunDataReaderForUpdate(reader, obj) ?? throw new FileNotFoundException();
-        await reader.CloseAsync();
-        await transaction.CommitAsync().ConfigureAwait(false);
+        using ISqlServerDataReader<StorageObject> read = await cmd
+            .ExecuteReaderAsync(
+                new[] { "ContentType", "Version", "Created" },
+                values => obj with { ContentType = (string)values[0], Version = (int)values[1], Created = (DateTime)values[2] },
+                CancellationToken.None);
 
-        return data;
-    }
 
-    private  StorageObject? RunDataReaderForUpdate(SqlDataReader reader, StorageObject update)
-    {
-        int contentTypeColumn = reader.GetOrdinal(nameof(StorageObject.ContentType));
-        int versionColumn = reader.GetOrdinal(nameof(StorageObject.Version));
-        int createdColumn = reader.GetOrdinal(nameof(StorageObject.Created));
-        while (reader.Read())
-        {
-            return update with { ContentType = reader.GetString(contentTypeColumn), Version = reader.GetInt32(versionColumn), Created = reader.GetDateTime(createdColumn) };
-        }
-
-        return null;
+        return read.FirstOrDefault(); 
     }
 
     public Task<StorageObject> UpdateAsync(Guid id, JObject obj)
