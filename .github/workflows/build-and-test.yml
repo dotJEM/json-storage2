@@ -24,9 +24,11 @@ jobs:
     - name: Build
       run: dotnet build src/DotJEM.Json.Storage2.sln --configuration Release --no-restore
     
+    - name: Prepare SQLServer
      # Start up sqlserver
-    - run: docker run --name sql-server -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=UUID58cf785a1c9c4bb3b62cb593d530c865!" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest
-    - run: docker exec -i sql-server /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P UUID58cf785a1c9c4bb3b62cb593d530c865! -d master -Q "CREATE DATABASE storage2test"
+      run: | 
+           docker run --name sql-server -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=UUID58cf785a1c9c4bb3b62cb593d530c865!" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest \
+           docker exec -i sql-server /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P UUID58cf785a1c9c4bb3b62cb593d530c865! -d master -Q "CREATE DATABASE storage2test" \
     
     - name: Test
       run: dotnet test src/DotJEM.Json.Storage2.sln --configuration Release --no-build --verbosity normal
