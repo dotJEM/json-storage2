@@ -17,7 +17,17 @@ jobs:
       uses: actions/setup-dotnet@v2
       with:
         dotnet-version: 6.x.x
-        
+    
+    - name: Version
+      id: gitversion
+      uses: gittools/actions/gitversion/execute@v0.10.2
+      
+    - name: TestPrint versions.
+      run: echo "NuGetVersion: ${{ steps.gitversion.outputs.nuGetVersion }}"
+      
+    
+    # Starting the SQL Server here so that it has time to get up and running before we get to the tests, it seems doing this before the restore and build
+    # is consistent enough.
     - name: Start SQLServer Image
       run: docker run --name sql-server -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=UUID58cf785a1c9c4bb3b62cb593d530c865!" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest
             
