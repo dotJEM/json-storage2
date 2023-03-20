@@ -35,4 +35,4 @@ jobs:
         mssql_connection: "Data Source=localhost,1433; User Id=sa;;Initial Catalog=storage2test;Password=UUID58cf785a1c9c4bb3b62cb593d530c865!"
 
     - name: Pack
-      run: dotnet pack src/DotJEM.Json.Storage2.sln --configuration Releasee --no-build
+      run: dotnet pack src/DotJEM.Json.Storage2.sln --configuration Release
