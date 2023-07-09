@@ -1,0 +1,43 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: 6.x.x
+      
+    
+    # Starting the SQL Server here so that it has time to get up and running before we get to the tests, it seems doing this before the restore and build
+    # is consistent enough.
+    - name: Start SQLServer Image
+      run: docker run --name sql-server -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=UUID58cf785a1c9c4bb3b62cb593d530c865!" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest
+            
+    - name: Restore dependencies
+      run: dotnet restore src/DotJEM.Json.Storage2.sln
+      
+    - name: Build
+      run: dotnet build src/DotJEM.Json.Storage2.sln --configuration Release --no-restore
+    
+    - name: Create Test Database
+      run: docker exec -i sql-server /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P UUID58cf785a1c9c4bb3b62cb593d530c865! -d master -Q "CREATE DATABASE storage2test" \
+    
+    - name: Test
+      run: dotnet test src/DotJEM.Json.Storage2.sln --configuration Release --no-build --verbosity normal
+      env:
+        MSSQL_SA_PASSWORD: UUID58cf785a1c9c4bb3b62cb593d530c865!
+        mssql_connection: "Data Source=localhost,1433; User Id=sa;;Initial Catalog=storage2test;Password=UUID58cf785a1c9c4bb3b62cb593d530c865!"
+
+    - name: Pack
+      run: dotnet pack src/DotJEM.Json.Storage2.sln --configuration Release
