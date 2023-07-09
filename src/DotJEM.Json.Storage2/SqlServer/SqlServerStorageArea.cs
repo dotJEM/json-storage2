@@ -69,7 +69,7 @@ public class SqlServerStorageArea : IStorageArea
         await stateManager.Ensure();
         DateTime timeStamp = DateTime.UtcNow; ;
         using ISqlServerCommand cmd = context.CommandBuilder
-            .From("InsertIntoDataTable", "normal")
+            .From("InsertIntoDataTable")
             .Replace(
                 ("schema", stateManager.Schema),
                 ("data_table_name", $"{stateManager.AreaName}.data"),

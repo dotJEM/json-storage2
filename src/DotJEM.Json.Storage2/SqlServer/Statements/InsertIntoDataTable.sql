@@ -1,11 +1,11 @@
-﻿--start:normal
+﻿--start:default
 INSERT INTO [@{schema}].[@{data_table_name}]
            ([ContentType]
            ,[Version]
            ,[Created]
            ,[Updated]
            ,[Data])
-     OUTPUT 'CREATE', INSERTED.[Id], INSERTED.[Version], @timestamp, INSERTED.[Data] 
+     OUTPUT 'C', INSERTED.[Id], INSERTED.[Version], @timestamp, INSERTED.[Data] 
 		INTO [@{schema}].[@{log_table_name}]([Event], [Id], [Version], [Time], [Data])
      OUTPUT 
             INSERTED.[Id]
@@ -15,4 +15,4 @@ INSERT INTO [@{schema}].[@{data_table_name}]
            ,@timestamp
            ,@timestamp
            ,@data);
---end:normal
+--end:default

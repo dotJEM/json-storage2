@@ -59,7 +59,7 @@ public class SqlServerConnectionFactory : ISqlServerConnectionFactory
 
 public interface ISqlServerCommandBuilderFactory
 {
-    ISqlServerCommandBuilder From(string resource, string section = null);
+    ISqlServerCommandBuilder From(string resource, string section = "default");
 
 }
 
@@ -72,7 +72,7 @@ public class SqlServerCommandBuilderFactory : ISqlServerCommandBuilderFactory
         this.connectionFactory = connectionFactory;
     }
 
-    public ISqlServerCommandBuilder From(string resource, string section = null)
+    public ISqlServerCommandBuilder From(string resource, string section =  "default")
     {
         return new SqlServerCommandBuilder(connectionFactory, resource, section);
     }
@@ -117,9 +117,7 @@ public class SqlServerCommandBuilder : ISqlServerCommandBuilder
 
     public ISqlServerCommand Build()
     {
-        string commandText = section == null
-            ? SqlServerStatements.Load(resource, replacements)
-            : SqlServerStatements.Load(resource, section, replacements);
+        string commandText = SqlServerStatements.Load(resource, section, replacements);
 
         SqlConnection connection = connectionFactory.Create();
         SqlCommand command = new SqlCommand(commandText, connection);
