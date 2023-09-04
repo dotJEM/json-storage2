@@ -22,6 +22,7 @@ public class SqlServerStorageArea : IStorageArea
 
 
 #if NETSTANDARD2_0
+
 #else
     public async IAsyncEnumerable<StorageObject> GetAsync()
     {

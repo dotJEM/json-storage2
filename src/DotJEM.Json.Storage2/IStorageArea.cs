@@ -8,8 +8,13 @@ public interface IStorageArea
 {
     string Name { get; }
 
-    //IAsyncEnumerable<StorageObject> GetAsync();
-    //IAsyncEnumerable<StorageObject> GetAsync(long skip, int take = 100);
+#if NETSTANDARD2_0
+    Task<IEnumerable<StorageObject>> GetAsync();
+    Task<IEnumerable<StorageObject>> GetAsync(long skip, int take = 100);
+#else
+    IAsyncEnumerable<StorageObject> GetAsync();
+    IAsyncEnumerable<StorageObject> GetAsync(long skip, int take = 100);
+#endif
 
     Task<StorageObject?> GetAsync(Guid id);
     Task<StorageObject> InsertAsync(string contentType, JObject obj);
