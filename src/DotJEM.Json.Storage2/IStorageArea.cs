@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using System;
+using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace DotJEM.Json.Storage2;
 
@@ -6,8 +8,8 @@ public interface IStorageArea
 {
     string Name { get; }
 
-    IAsyncEnumerable<StorageObject> GetAsync();
-    IAsyncEnumerable<StorageObject> GetAsync(long skip, int take = 100);
+    //IAsyncEnumerable<StorageObject> GetAsync();
+    //IAsyncEnumerable<StorageObject> GetAsync(long skip, int take = 100);
 
     Task<StorageObject?> GetAsync(Guid id);
     Task<StorageObject> InsertAsync(string contentType, JObject obj);

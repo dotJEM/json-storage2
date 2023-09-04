@@ -1,3 +1,9 @@
 ﻿namespace DotJEM.Json.Storage2;
 
-public interface IStorageContext { }
+/// <summary>
+/// 
+/// </summary>
+public interface IStorageContext
+{
+
+}

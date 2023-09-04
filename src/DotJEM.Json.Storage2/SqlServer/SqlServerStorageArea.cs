@@ -1,5 +1,6 @@
-﻿using System.Data;
-using System.Data.SqlClient;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 using DotJEM.Json.Storage2.SqlServer.Initialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -19,13 +20,13 @@ public class SqlServerStorageArea : IStorageArea
         this.stateManager = stateManager;
     }
 
+
+#if NETSTANDARD2_0
+#else
     public async IAsyncEnumerable<StorageObject> GetAsync()
     {
         if (!stateManager.Exists)
             yield break;
-
-
-
 
         throw new NotImplementedException();
     }
@@ -37,6 +38,9 @@ public class SqlServerStorageArea : IStorageArea
 
         throw new NotImplementedException();
     }
+#endif
+
+
 
     public async Task<StorageObject?> GetAsync(Guid id)
     {

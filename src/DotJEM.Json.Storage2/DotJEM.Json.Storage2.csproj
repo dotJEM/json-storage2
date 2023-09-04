@@ -1,9 +1,36 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+	  <TargetFrameworks>net6.0;netstandard2.0</TargetFrameworks>
+	  <!--<TargetFramework>netstandard2.0</TargetFramework>-->
+	  <LangVersion>latest</LangVersion>
+	  <ImplicitUsings>enable</ImplicitUsings>
+	  <Nullable>enable</Nullable>
+	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
+
+	  <GenerateDocumentationFile>True</GenerateDocumentationFile>
+	  <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+	  <Authors>DotJEM</Authors>
+	  <Copyright>Copyright © DotJEM 2023</Copyright>
+	  <Description></Description>
+	  <IncludeSymbols>False</IncludeSymbols>
+	  <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+	  <AssemblyName>$(MSBuildProjectName)</AssemblyName>
+	  <RootNamespace>$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+
+	  <Version></Version>
+	  <PackageVersion></PackageVersion>
+	  <InformationalVersion></InformationalVersion>
+	  <PackageVersion></PackageVersion>
+	  <AssemblyVersion></AssemblyVersion>
+	  <FileVersion></FileVersion>
+
+	  <PackageIcon>avatar.png</PackageIcon>
+	  <PackageReadmeFile>README.md</PackageReadmeFile>
+      
+    <!--<ImplicitUsings>enable</ImplicitUsings>-->
+    <!--<Nullable>enable</Nullable>-->
   </PropertyGroup>
 
   <ItemGroup>
@@ -44,4 +71,14 @@
 		<PackageReference Include="System.Data.SqlClient" Version="4.8.3" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<None Include="..\..\avatar.png">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+		<None Include="..\..\README.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
 </Project>

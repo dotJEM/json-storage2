@@ -1,7 +1,12 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlClient;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using DotJEM.Json.Storage2.Cache;
 using DotJEM.Json.Storage2.SqlServer.Initialization;
 
@@ -149,10 +154,18 @@ public class SqlServerCommand : ISqlServerCommand
     public async Task<T> ExecuteScalarAsync<T>(CancellationToken cancellationToken)
     {
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        await using SqlTransaction transaction = connection.BeginTransaction();
+
+#if NETSTANDARD2_0
+        using SqlTransaction transaction = connection.BeginTransaction();
         command.Transaction = transaction;
         T value =  (T)(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException());
+        transaction.Commit();
+#else
+        await using SqlTransaction transaction = connection.BeginTransaction();
+        command.Transaction = transaction;
+        T value = (T)(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException());
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+#endif
         return value;
     }
 
@@ -194,7 +207,7 @@ public readonly record struct Parameter(string Name, SqlDbType Type, object valu
 }
 
 
-public interface ISqlServerDataReader<T> : IDisposable, IEnumerable<T>
+public interface ISqlServerDataReader<out T> : IDisposable, IEnumerable<T>
 {
 }
 
@@ -225,11 +238,8 @@ public class SqlServerDataReader<T> : ISqlServerDataReader<T>
     }
 
 
-    public void Dispose()
-    {
-        reader.Dispose();
-    }
-
+    /// <inheritdoc />
+    public void Dispose() => reader.Dispose();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
