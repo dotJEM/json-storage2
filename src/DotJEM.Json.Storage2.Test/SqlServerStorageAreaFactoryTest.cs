@@ -31,8 +31,11 @@ public class SqlServerStorageContextIntegrationTest
         StorageObject so3 = await area.UpdateAsync(so.Id, JObject.FromObject(new { foo = "Fax" }));
         Console.WriteLine(so3);
 
-        StorageObject? so4 = await area.GetAsync(so.Id);
+        StorageObject so4 = await area.UpdateAsync(so.Id, JObject.FromObject(new { foo = "Foo" }));
         Console.WriteLine(so4);
+
+        StorageObject? so5 = await area.GetAsync(so.Id);
+        Console.WriteLine(so5);
 
     }
 }

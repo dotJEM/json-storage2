@@ -13,54 +13,44 @@ public static class SqlServerStatements
 {
     private static readonly IAssemblyResourceLoader loader = new AssemblyResourceLoader();
     private static readonly IStringTemplateReplacer replacer = new StringTemplateReplacer();
-    private static readonly ISqlServerStatementTemplateCache cache = new SqlServerStatementTemplateCache();
+    private static readonly ISqlServerStatementTemplateCache cache = new SqlServerStatementTemplateCache(loader.LoadString);
     
     public static string Load(string input, params (string key, string value)[] values)
         => Load(input, "default", values.ToDictionary(kv => kv.key, kv => kv.value));
     public static string Load(string input, IDictionary<string, string> values)
         => Load(input, "default", values);
-
     public static string Load(string input, string section, params (string key, string value)[] values)
         => Load(input, section, values.ToDictionary(kv => kv.key, kv => kv.value));
 
     public static string Load(string resource, string section, IDictionary<string, string> values)
     {
-        string sql = cache.GetTemplate(resource, section);
+        string sql = cache.Lookup(resource, section);
 
         //string sql = ReadSection(loader.LoadString($"DotJEM.Json.Storage2.SqlServer.Statements.{resource}.sql"), section);
         return replacer.Replace(sql, values);
     }
-
-    private static string ReadSection(string input, string section)
-    {
-
-        bool yield = false;
-        StringReader reader = new StringReader(input);
-        StringBuilder output = new StringBuilder();
-        while (reader.ReadLine() is { } line)
-        {
-            if (line.Equals($"--start:{section}"))
-            {
-                yield = true;
-                continue;
-            }
-
-            if (line.Equals($"--end:{section}"))
-                break;
-
-            if (yield) output.AppendLine(line);
-        }
-
-        return output.ToString();
-    }
-
 }
 
+//public static class SqlServerStatementTemplateCacheExtensions 
+//{
+//    public static string Load(this ISqlServerStatementTemplateCache self, string input, params (string key, string value)[] values)
+//        => self.Load(input, "default", values.ToDictionary(kv => kv.key, kv => kv.value));
+//    public static string Load(this ISqlServerStatementTemplateCache self, string input, IDictionary<string, string> values)
+//        => self.Load(input, "default", values);
+//    public static string Load(this ISqlServerStatementTemplateCache self, string input, string section, params (string key, string value)[] values)
+//        => self.Load(input, section, values.ToDictionary(kv => kv.key, kv => kv.value));
+//    public static string Load(this ISqlServerStatementTemplateCache self, string resource, string section, IDictionary<string, string> values)
+//    {
+//        string sql = self.Lookup(resource, section);
 
+//        //string sql = ReadSection(loader.LoadString($"DotJEM.Json.Storage2.SqlServer.Statements.{resource}.sql"), section);
+//        return replacer.Replace(sql, values);
+//    }
+//}
 
 public interface ISqlServerStatementTemplateCache
 {
-    string GetTemplate(string resource, string section);
+    string Lookup(string resource, string section);
 }
 
 public class SqlServerStatementTemplateCache : ISqlServerStatementTemplateCache
@@ -68,15 +58,22 @@ public class SqlServerStatementTemplateCache : ISqlServerStatementTemplateCache
     private readonly ConcurrentDictionary<string, IDictionary<string, string>> map = new();
     private static readonly IAssemblyResourceLoader loader = new AssemblyResourceLoader();
 
-    public string GetTemplate(string resource, string section = "default")
+    private readonly Func<string, string> valueProvider;
+
+    public SqlServerStatementTemplateCache(Func<string, string> valueProvider)
+    {
+        this.valueProvider = valueProvider;
+    }
+
+    public string Lookup(string resource, string section = "default")
     {
         IDictionary<string, string> templates = map.GetOrAdd(resource, Load);
         return templates[section];
     }
     
-    private static IDictionary<string, string> Load(string resource)
+    private IDictionary<string, string> Load(string resource)
     {
-        StringReader reader = new (loader.LoadString($"DotJEM.Json.Storage2.SqlServer.Statements.{resource}.sql"));
+        StringReader reader = new (valueProvider.Invoke($"DotJEM.Json.Storage2.SqlServer.Statements.{resource}.sql"));
         return ReadToEnd(reader).ToDictionary(tuple => tuple.Key, tuple => tuple.Template);
     }
 

@@ -12,13 +12,24 @@ using DotJEM.Json.Storage2.SqlServer.Initialization;
 
 namespace DotJEM.Json.Storage2.SqlServer;
 
+public interface IUserInformationProvider
+{
+    string UserName { get; }
+}
+
+public class DefaultUserInformationProvider : IUserInformationProvider
+{
+    public string UserName => Environment.UserName;
+}
+
 public class SqlServerStorageContext : IStorageContext
 {
-    public static async Task<SqlServerStorageContext> Create(string connectionString, string schema = "dbo")
+    //TODO: Factory/Builder instead for prober injection.
+    public static async Task<SqlServerStorageContext> Create(string connectionString, string schema = "dbo", IUserInformationProvider userInformationProvider = null)
     {
         SqlServerConnectionFactory connectionFactory = new SqlServerConnectionFactory(connectionString);
         SqlServerStorageAreaFactory areaFactory = await Temp.Create(schema, connectionFactory);
-        return new SqlServerStorageContext(connectionFactory, areaFactory);
+        return new SqlServerStorageContext(connectionFactory, areaFactory, userInformationProvider ?? new DefaultUserInformationProvider());
     } 
 
     private readonly AsyncCache<SqlServerStorageArea> areas = new();
@@ -26,12 +37,14 @@ public class SqlServerStorageContext : IStorageContext
 
     public ISqlServerConnectionFactory ConnectionFactory { get; }
     public ISqlServerCommandBuilderFactory CommandBuilder { get; }
+    public IUserInformationProvider UserInformation { get; }
 
-    private SqlServerStorageContext(SqlServerConnectionFactory connectionFactory, SqlServerStorageAreaFactory areaFactory)
+    private SqlServerStorageContext(SqlServerConnectionFactory connectionFactory, SqlServerStorageAreaFactory areaFactory, IUserInformationProvider userInformation)
     {
         this.areaFactory = areaFactory;
         ConnectionFactory = connectionFactory;
         CommandBuilder = new SqlServerCommandBuilderFactory(connectionFactory);
+        UserInformation = userInformation;
     }
 
     public async Task<IStorageArea> AreaAsync(string name)

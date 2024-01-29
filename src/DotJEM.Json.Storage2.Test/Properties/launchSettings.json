@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "DotJEM.Json.Storage2.Test": {
+      "commandName": "Project"
+    },
+    "Profile 1": {
+      "commandName": "Executable"
+    }
+  }
+}
