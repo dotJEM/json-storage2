@@ -2,6 +2,7 @@
 using System.Net.Mime;
 using System.Threading;
 using System.Threading.Tasks;
+using DotJEM.Json.Storage2.Generated;
 using DotJEM.Json.Storage2.SqlServer.Initialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -98,6 +99,8 @@ public class SqlServerStorageArea : IStorageArea
     public async Task<StorageObject> InsertAsync(InsertStorageObject obj, CancellationToken cancellation)
     {
         await stateManager.Ensure();
+
+        SqlFiles.SelectFromDataTable("", "");
 
         DateTime timeStamp = obj.Created ?? DateTime.UtcNow;
         string userName = obj.CreatedBy ?? context.UserInformation.UserName;

@@ -1,48 +1,31 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Statements\CreateDataTable.sql" />
-    <None Remove="Statements\CreateLogTable.sql" />
-    <None Remove="Statements\CreateSchema.sql" />
-    <None Remove="Statements\CreateSchemasTable.sql" />
-    <None Remove="Statements\DeleteDataTable.sql" />
-    <None Remove="Statements\InsertIntoDataTable.sql" />
-    <None Remove="Statements\SelectFromDataTable.sql" />
-    <None Remove="Statements\SelectSchemaExists.sql" />
-    <None Remove="Statements\SelectSchemaNames.sql" />
-    <None Remove="Statements\SelectTableNames.sql" />
-    <None Remove="Statements\UpdateDataTable.sql" />
+    <None Remove="Statements\*.sql" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Statements\CreateDataTable.sql">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Statements\CreateLogTable.sql" />
-    <EmbeddedResource Include="Statements\CreateSchema.sql">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Statements\CreateSchemasTable.sql" />
-    <EmbeddedResource Include="Statements\DeleteDataTable.sql" />
-    <EmbeddedResource Include="Statements\InsertIntoDataTable.sql" />
-    <EmbeddedResource Include="Statements\SelectFromDataTable.sql" />
-    <EmbeddedResource Include="Statements\SelectSchemaExists.sql" />
-    <EmbeddedResource Include="Statements\SelectSchemaNames.sql" />
-    <EmbeddedResource Include="Statements\SelectTableNames.sql" />
-    <EmbeddedResource Include="Statements\UpdateDataTable.sql" />
+    <AdditionalFiles Include="Statements\*.sql" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotJEM.Json.Storage2.Code.Generator\DotJEM.Json.Storage2.Code.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DotJEM.Json.Storage2.Code.Generator\DotJEM.Json.Storage2.Code.Generator.csproj"
-                      OutputItemType="Analyzer"
-                      ReferenceOutputAssembly="false" />
+    <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
+    <Folder Include="Generated\DotJEM.Json.Storage2.Code.Generator\" />
   </ItemGroup>
 
 </Project>
