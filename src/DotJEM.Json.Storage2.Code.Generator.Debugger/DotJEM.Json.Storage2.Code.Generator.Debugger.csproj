@@ -25,7 +25,12 @@
 
   <ItemGroup>
     <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
-    <Folder Include="Generated\DotJEM.Json.Storage2.Code.Generator\" />
+    <None Include="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Generated\" />
+  </ItemGroup>
+
 
 </Project>

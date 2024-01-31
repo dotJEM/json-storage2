@@ -1,4 +1,4 @@
-﻿--start:default
+﻿											--start:default
 UPDATE [@{schema}].[@{data_table_name}]
    SET [Version] = [Version] + 1
       ,[Updated] = @timestamp

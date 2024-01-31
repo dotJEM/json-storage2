@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Data.SqlTypes;
 using System.Net.Mime;
 using System.Threading;
 using System.Threading.Tasks;
@@ -62,7 +63,7 @@ public class SqlServerStorageArea : IStorageArea
     {
         if (!stateManager.Exists)
             return null;
-
+        
         using ISqlServerCommand cmd = context.CommandBuilder
             .From("SelectFromDataTable", "byid")
             .Replace(
@@ -100,7 +101,7 @@ public class SqlServerStorageArea : IStorageArea
     {
         await stateManager.Ensure();
 
-        SqlFiles.SelectFromDataTable("", "");
+        SqlFiles.CreateDataTable_default("", "");
 
         DateTime timeStamp = obj.Created ?? DateTime.UtcNow;
         string userName = obj.CreatedBy ?? context.UserInformation.UserName;

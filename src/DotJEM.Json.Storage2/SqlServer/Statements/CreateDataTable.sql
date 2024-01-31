@@ -13,4 +13,6 @@
 ) ON [PRIMARY];
 
 ALTER TABLE [@{schema}].[@{data_table_name}] ADD CONSTRAINT [DF_@{data_table_name}_Id] DEFAULT (NEWSEQUENTIALID()) FOR [Id];
+
+
 -- ALTER TABLE [dbo].[@{data_table_name}] ADD  CONSTRAINT [DF_@{data_table_name}_Updated]  DEFAULT (getdate()) FOR [Updated]
