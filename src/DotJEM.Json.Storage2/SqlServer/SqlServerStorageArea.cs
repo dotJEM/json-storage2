@@ -102,6 +102,7 @@ public class SqlServerStorageArea : IStorageArea
         await stateManager.Ensure();
 
         SqlFiles.CreateDataTable_default("", "");
+        
 
         DateTime timeStamp = obj.Created ?? DateTime.UtcNow;
         string userName = obj.CreatedBy ?? context.UserInformation.UserName;

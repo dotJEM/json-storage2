@@ -70,6 +70,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Generated\" />
+	  <Folder Include="Generated\DotJEM.Json.Storage2.Code.Generator\" />
 	</ItemGroup>
 </Project>

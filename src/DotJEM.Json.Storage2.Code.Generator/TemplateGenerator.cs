@@ -30,7 +30,7 @@ public class TemplateGenerator : IIncrementalGenerator
     {
         IncrementalValueProvider<string?> assemblyName = context.CompilationProvider.Select(static (c, _) => c.AssemblyName);
         IncrementalValuesProvider<AdditionalText> templateFiles = context.AdditionalTextsProvider
-            .Where(static file => file.Path.EndsWith(".html")); //Note hardcoded filetype for now.
+            .Where(static file => file.Path.EndsWith(".sql")); //Note hardcoded filetype for now.
 
         IncrementalValuesProvider<(AdditionalText Left, string? Right)> combined = templateFiles.Combine(assemblyName);
         
@@ -38,8 +38,10 @@ public class TemplateGenerator : IIncrementalGenerator
             .Select((tuple, _) => tuple.Left)
             .SelectMany(builder.Build);
 
+        //context.RegisterPostInitializationOutput(ctx => );
+
         context.RegisterSourceOutput(templates, (spc, template) => {
-            spc.AddSource($"Html.{template.Name}.{template.Key}.g.cs", template.ToString());
+            spc.AddSource($"SqlTemplates.{template.Name}.{template.Key}.g.cs", template.ToString());
         });
     }
 }
