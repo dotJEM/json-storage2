@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "Debug Generator": {
-      "commandName": "DebugRoslynComponent",
-      "targetProject": "..\\DotJEM.Json.Storage2.Code.Generator.Debugger\\DotJEM.Json.Storage2.Code.Generator.Debugger.csproj"
-    }
-  }
-}
