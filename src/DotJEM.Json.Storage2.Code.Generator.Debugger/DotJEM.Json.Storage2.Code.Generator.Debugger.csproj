@@ -18,11 +18,6 @@
     <AdditionalFiles Include="Statements\*.sql" />
   </ItemGroup>
 
-
-  <ItemGroup>
-    <ProjectReference Include="..\DotJEM.Json.Storage2.Code.Generator\DotJEM.Json.Storage2.Code.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-  </ItemGroup>
-
   <ItemGroup>
     <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
     <None Include="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />

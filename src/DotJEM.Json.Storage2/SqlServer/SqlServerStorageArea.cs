@@ -3,7 +3,6 @@ using System.Data.SqlTypes;
 using System.Net.Mime;
 using System.Threading;
 using System.Threading.Tasks;
-using DotJEM.Json.Storage2.Generated;
 using DotJEM.Json.Storage2.SqlServer.Initialization;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -64,6 +63,7 @@ public class SqlServerStorageArea : IStorageArea
         if (!stateManager.Exists)
             return null;
         
+
         using ISqlServerCommand cmd = context.CommandBuilder
             .From("SelectFromDataTable", "byid")
             .Replace(
@@ -101,8 +101,11 @@ public class SqlServerStorageArea : IStorageArea
     {
         await stateManager.Ensure();
 
-        SqlFiles.CreateDataTable_default("", "");
-        
+        SqlTemplates.CreateDataTableTemplates_default("","");
+
+        //SqlTemplates.CreateDataTable_default("", "");
+        //SqlFiles.TempTemp_default("", "", "");
+        //SqlFiles.Foobar_default();
 
         DateTime timeStamp = obj.Created ?? DateTime.UtcNow;
         string userName = obj.CreatedBy ?? context.UserInformation.UserName;

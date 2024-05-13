@@ -30,8 +30,8 @@
       
     <!--<ImplicitUsings>enable</ImplicitUsings>-->
     <!--<Nullable>enable</Nullable>-->
-    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+    <!--<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>-->
+    <!--<CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>-->
   </PropertyGroup>
 
   <ItemGroup>
@@ -39,24 +39,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AdditionalFiles Include="SqlServer\Statements\*.sql" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Exclude the output of source generators from the compilation -->
-    <!--<Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
-    <None Include="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />-->
+    <AdditionalFiles Include="SqlServer\Statements\*.sql" TemplateClass="SqlTemplates" />
   </ItemGroup>
 
   <ItemGroup>
 		<PackageReference Include="Dapper" Version="2.1.28" />
+		<PackageReference Include="DotJEM.SourceGen.TemplateGenerator" Version="0.1.11-beta001" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 		<PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
 	</ItemGroup>
-  
-  <ItemGroup>
-    <ProjectReference Include="..\DotJEM.Json.Storage2.Code.Generator\DotJEM.Json.Storage2.Code.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-  </ItemGroup>
 
 	<ItemGroup>
 		<None Include="..\..\avatar.png">
@@ -67,9 +58,5 @@
 			<Pack>True</Pack>
 			<PackagePath>\</PackagePath>
 		</None>
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="Generated\DotJEM.Json.Storage2.Code.Generator\" />
 	</ItemGroup>
 </Project>

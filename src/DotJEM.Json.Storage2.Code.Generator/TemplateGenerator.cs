@@ -79,7 +79,7 @@ public readonly struct StringTemplate
     }
 }
 
-public class StringTemplateBuilder 
+public class StringTemplateBuilder
 {
     private readonly Regex pattern;
     private readonly Regex nlPattern = new Regex(@"\r\n?|\n", RegexOptions.Compiled);
@@ -99,7 +99,7 @@ public class StringTemplateBuilder
         string name = Path.GetFileNameWithoutExtension(content.Path);
         string sourceFromFile = content.GetText(token)!.ToString();
 
-        foreach ((string Key, string Template)  in new TemplateReader().ReadToEnd(new StringReader(sourceFromFile)))
+        foreach ((string Key, string Template) in new TemplateReader().ReadToEnd(new StringReader(sourceFromFile)))
         {
             string source = Template;
             int index = 0;
