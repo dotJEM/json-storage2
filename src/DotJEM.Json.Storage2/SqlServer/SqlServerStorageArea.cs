@@ -62,7 +62,7 @@ public class SqlServerStorageArea : IStorageArea
     {
         if (!stateManager.Exists)
             return null;
-        
+
 
         using ISqlServerCommand cmd = context.CommandBuilder
             .From("SelectFromDataTable", "byid")
@@ -101,7 +101,6 @@ public class SqlServerStorageArea : IStorageArea
     {
         await stateManager.Ensure();
 
-        SqlTemplates.CreateDataTableTemplates_default("","");
 
         //SqlTemplates.CreateDataTable_default("", "");
         //SqlFiles.TempTemp_default("", "", "");
