@@ -16,8 +16,22 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v2
       with:
-        dotnet-version: 6.x.x
-      
+        dotnet-version: 8.x.x
+
+    - name: Calculate Version Parameters
+      id: version
+      run: |
+        build=${{github.run_number}}
+        template=`cat ./VERSION`
+        shortsha=$(git rev-parse --short ${{ github.sha }})
+        echo "template=$template" >> $GITHUB_OUTPUT 
+        echo "template=$template"
+        echo "shortsha=$shortsha" >> $GITHUB_OUTPUT
+        echo "shortsha=$shortsha"
+        echo "semver=${template//build/$build}+sha.$shortsha" >> $GITHUB_OUTPUT
+        echo "semver=${template//build/$build}+sha.$shortsha"
+        echo "msver=${template//build/$build}.0" >> $GITHUB_OUTPUT
+        echo "msver=${template//build/$build}.0"      
     
     # Starting the SQL Server here so that it has time to get up and running before we get to the tests, it seems doing this before the restore and build
     # is consistent enough.
@@ -28,16 +42,34 @@ jobs:
       run: dotnet restore src/DotJEM.Json.Storage2.sln
       
     - name: Build
-      run: dotnet build src/DotJEM.Json.Storage2.sln --configuration Release --no-restore
+      working-directory: ./src
+      run: > 
+        dotnet build --configuration Release --no-restore 
+        /p:Version=${{steps.version.outputs.semver}}
+        /p:PackageVersion=${{steps.version.outputs.semver}}
+        /p:AssemblyVersion=${{steps.version.outputs.msver}}
+        /p:FileVersion=${{steps.version.outputs.msver}}
     
     - name: Create Test Database
       run: docker exec -i sql-server /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P UUID58cf785a1c9c4bb3b62cb593d530c865! -d master -Q "CREATE DATABASE storage2test" \
     
     - name: Test
-      run: dotnet test src/DotJEM.Json.Storage2.sln --configuration Release --no-build --verbosity normal
+      working-directory: ./src
+      run: dotnet test --configuration Release --no-build --verbosity normal
       env:
         MSSQL_SA_PASSWORD: UUID58cf785a1c9c4bb3b62cb593d530c865!
         mssql_connection: "Data Source=localhost,1433; User Id=sa;;Initial Catalog=storage2test;Password=UUID58cf785a1c9c4bb3b62cb593d530c865!"
 
-    - name: Pack
-      run: dotnet pack src/DotJEM.Json.Storage2.sln --configuration Release
+    - name: Package
+      working-directory: ./src
+      run: > 
+        dotnet pack --configuration Release --no-restore 
+        /p:Version=${{steps.version.outputs.semver}}
+        /p:PackageVersion=${{steps.version.outputs.semver}}
+        /p:AssemblyVersion=${{steps.version.outputs.msver}}
+        /p:FileVersion=${{steps.version.outputs.msver}}
+      
+    - name: Publish
+      if: github.event_name == 'push'
+      working-directory: ./src
+      run: dotnet nuget push **/*.nupkg -k ${{ secrets.NUGET_API_KEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate 

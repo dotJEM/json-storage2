@@ -1,12 +1,13 @@
-﻿--start:default
-INSERT INTO [@{schema}].[@{data_table_name}]
+﻿INSERT INTO [@{schema}].[@{area_name}.data]
            ([ContentType]
            ,[Version]
            ,[Created]
            ,[Updated]
+           ,[CreatedBy]
+           ,[UpdatedBy]
            ,[Data])
-     OUTPUT 'C', INSERTED.[Id], INSERTED.[Version], @timestamp, INSERTED.[Data] 
-		INTO [@{schema}].[@{log_table_name}]([Event], [Id], [Version], [Time], [Data])
+     OUTPUT 'C', INSERTED.[Id], INSERTED.[Version], @timestamp, INSERTED.[CreatedBy], INSERTED.[Data] 
+		INTO [@{schema}].[@{area_name}.log]([Event], [Id], [Version], [Time], [User], [Data])
      OUTPUT 
             INSERTED.[Id]
      VALUES
@@ -14,5 +15,6 @@ INSERT INTO [@{schema}].[@{data_table_name}]
            ,0
            ,@timestamp
            ,@timestamp
+           ,@user
+           ,@user
            ,@data);
---end:default

@@ -5,7 +5,22 @@ VisualStudioVersion = 17.1.32421.90
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotJEM.Json.Storage2", "DotJEM.Json.Storage2\DotJEM.Json.Storage2.csproj", "{4AE2A873-D73F-4029-A345-6265BA308678}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DotJEM.Json.Storage2.Test", "DotJEM.Json.Storage2.Test\DotJEM.Json.Storage2.Test.csproj", "{EA688743-1005-459D-B7DF-A003F3BF2E68}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotJEM.Json.Storage2.Test", "DotJEM.Json.Storage2.Test\DotJEM.Json.Storage2.Test.csproj", "{EA688743-1005-459D-B7DF-A003F3BF2E68}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".solution", ".solution", "{F5F9E656-86A4-47D1-9A26-EE6B12AF6742}"
+	ProjectSection(SolutionItems) = preProject
+		..\.gitignore = ..\.gitignore
+		..\avatar.png = ..\avatar.png
+		..\LICENSE = ..\LICENSE
+		..\README.md = ..\README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{4102E97B-9490-43B2-B2B4-CA028DDC1146}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{666265F2-4376-4168-86AA-822C7645660B}"
+	ProjectSection(SolutionItems) = preProject
+		..\.github\workflows\build-and-test.yml = ..\.github\workflows\build-and-test.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,6 +39,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{666265F2-4376-4168-86AA-822C7645660B} = {4102E97B-9490-43B2-B2B4-CA028DDC1146}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {6A31B693-C99A-4DEA-9CA1-9EAC1607C3A2}

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Data.SqlTypes;
+using System.Net.Mime;
 using System.Threading;
 using System.Threading.Tasks;
 using DotJEM.Json.Storage2.SqlServer.Initialization;
@@ -21,114 +23,164 @@ public class SqlServerStorageArea : IStorageArea
     }
 
 
-#if NETSTANDARD2_0
+    //private const long DEFAULT_SKIP = 0;
+    //private const int DEFAULT_TAKE = 100;
 
-#else
-    public async IAsyncEnumerable<StorageObject> GetAsync()
-    {
-        if (!stateManager.Exists)
-            yield break;
+    //public async IAsyncEnumerable<StorageObject> GetAsync()
+    //    => GetAsync(DEFAULT_SKIP, DEFAULT_TAKE, CancellationToken.None);
 
-        throw new NotImplementedException();
-    }
+    //public async IAsyncEnumerable<StorageObject> GetAsync(CancellationToken cancellation)
+    //    => GetAsync(DEFAULT_SKIP, DEFAULT_TAKE, cancellation);
 
-    public async IAsyncEnumerable<StorageObject> GetAsync(long skip, int take = 100)
-    {
-        if (!stateManager.Exists)
-            yield break;
+    //public async IAsyncEnumerable<StorageObject> GetAsync(long skip)
+    //    => GetAsync(skip, DEFAULT_TAKE, CancellationToken.None);
 
-        throw new NotImplementedException();
-    }
-#endif
+    //public async IAsyncEnumerable<StorageObject> GetAsync(long skip, CancellationToken cancellation)
+    //    => GetAsync(skip, DEFAULT_TAKE, cancellation);
+
+    //public async IAsyncEnumerable<StorageObject> GetAsync(long skip, int take)
+    //    => GetAsync(skip, take, CancellationToken.None);
+
+    //public async IAsyncEnumerable<StorageObject> GetAsync(long skip, int take, CancellationToken cancellation)
+    //{
+    //    if (!stateManager.Exists)
+    //        yield break;
+
+    //    throw new NotImplementedException();
+    //}
 
 
 
-    public async Task<StorageObject?> GetAsync(Guid id)
+    public Task<StorageObject?> GetAsync(Guid id) 
+        => GetAsync(id, CancellationToken.None);
+    
+    public async Task<StorageObject?> GetAsync(Guid id, CancellationToken cancellation)
     {
         if (!stateManager.Exists)
             return null;
+        using ISqlServerCommand cmd = context.CommandFactory.Create(
+            SqlTemplates.SelectFromDataTable_Byid(stateManager.Schema, stateManager.AreaName),
+            ("id", id));
 
-        using ISqlServerCommand cmd = context.CommandBuilder
-            .From("SelectFromDataTable", "byid")
-            .Replace(
-                ("schema", stateManager.Schema),
-                ("data_table_name", $"{stateManager.AreaName}.data")
-            )
-            .Parameters(("id", id))
-            .Build();
 
         using ISqlServerDataReader<StorageObject> read = await cmd
             .ExecuteReaderAsync(
-                new[] { "Id", "ContentType", "Version", "Created", "Updated", "Data" },
-                values => new StorageObject((string)values[1], (Guid)values[0], (int)values[2], (DateTime)values[3], (DateTime)values[4], JObject.Parse((string)values[5])),
+                ["Id", "ContentType", "Version", "Created", "Updated", "CreatedBy", "UpdatedBy", "Data"],
+                values => new StorageObject(
+                    (string)values[1], 
+                    (Guid)values[0],
+                    (int)values[2],
+                    (DateTime)values[3],
+                    (DateTime)values[4], 
+                    (string)values[5], 
+                    (string)values[6],
+                    JObject.Parse((string)values[7])),
                 CancellationToken.None);
 
         return read.FirstOrDefault();
     }
 
     public Task<StorageObject> InsertAsync(string contentType, JObject obj)
-        => InsertAsync(new StorageObject(contentType, Guid.Empty, 0, DateTime.MinValue, DateTime.MinValue, obj));
+        => InsertAsync(new InsertStorageObject(contentType, obj), CancellationToken.None);
+    public Task<StorageObject> InsertAsync(string contentType, JObject obj, CancellationToken cancellation)
+        => InsertAsync(new InsertStorageObject(contentType, obj), cancellation);
+    public Task<StorageObject> InsertAsync(InsertStorageObject obj)
+        => InsertAsync(obj, CancellationToken.None);
 
-    public async Task<StorageObject> InsertAsync(StorageObject obj)
+    public async Task<StorageObject> InsertAsync(InsertStorageObject obj, CancellationToken cancellation)
     {
         await stateManager.Ensure();
-        DateTime timeStamp = DateTime.UtcNow; ;
-        using ISqlServerCommand cmd = context.CommandBuilder
-            .From("InsertIntoDataTable")
-            .Replace(
-                ("schema", stateManager.Schema),
-                ("data_table_name", $"{stateManager.AreaName}.data"),
-                ("log_table_name", $"{stateManager.AreaName}.log")
-            )
-            .Parameters(
-                ("contentType", obj.ContentType),
-                ("timestamp", timeStamp),
-                ("data", obj.Data.ToString(Formatting.None))
-            )
-            .Build();
+
+
+        DateTime timeStamp = obj.Created ?? DateTime.UtcNow;
+        string userName = obj.CreatedBy ?? context.UserInformation.UserName;
+
+        using ISqlServerCommand cmd = context.CommandFactory.Create(
+            SqlTemplates.InsertIntoDataTable(stateManager.Schema, stateManager.AreaName),
+            ("contentType", obj.ContentType),
+            ("timestamp", timeStamp),
+            ("user", userName),
+            ("data", obj.Data.ToString(Formatting.None)));
         
-        Guid id= await cmd.ExecuteScalarAsync<Guid>(CancellationToken.None).ConfigureAwait(false);
-        return obj with { Id = id, Created = timeStamp, Updated = timeStamp, Version = 0 };
+        Guid id= await cmd.ExecuteScalarAsync<Guid>(cancellation).ConfigureAwait(false);
+        return new StorageObject(obj.ContentType, id, 0, timeStamp, timeStamp, userName, userName, obj.Data);
     }
 
     // This is very back and forth, but maybe switching back to binary would be better for storage and retrieval speeds. In the end, maybe this should be a 
     // external choice.
     // https://learn.microsoft.com/da-dk/archive/blogs/sqlserverstorageengine/storing-json-in-sql-server#compressed-json-storage
 
-    public async Task<StorageObject> UpdateAsync(StorageObject obj)
+
+    public Task<StorageObject> UpdateAsync(Guid id, JObject obj)
+        => UpdateAsync(new UpdateStorageObject(string.Empty, id, obj), CancellationToken.None);
+
+    public Task<StorageObject> UpdateAsync(Guid id, JObject obj, CancellationToken cancellation)
+        => UpdateAsync(new UpdateStorageObject(string.Empty, id, obj), cancellation);
+
+    public Task<StorageObject> UpdateAsync(UpdateStorageObject obj)
+        => UpdateAsync(obj, CancellationToken.None);
+
+    public async Task<StorageObject> UpdateAsync(UpdateStorageObject obj, CancellationToken cancellation)
     {
         await stateManager.Ensure();
-        DateTime timeStamp = DateTime.UtcNow; ;
-        using ISqlServerCommand cmd = context.CommandBuilder
-            .From("UpdateDataTable")
-            .Replace(
-                ("schema", stateManager.Schema),
-                ("data_table_name", $"{stateManager.AreaName}.data"),
-                ("log_table_name", $"{stateManager.AreaName}.log")
-            )
-            .Parameters(
-                ("id", obj.Id),
-                ("timestamp", timeStamp),
-                ("data", obj.Data.ToString(Formatting.None))
-            )
-            .Build();
+
+        DateTime timeStamp = obj.Updated ?? DateTime.UtcNow;
+        string userName = obj.UpdatedBy ?? context.UserInformation.UserName;
+
+        using ISqlServerCommand cmd = context.CommandFactory.Create(
+            SqlTemplates.UpdateDataTable(stateManager.Schema, stateManager.AreaName),
+            ("id", obj.Id),
+            ("timestamp", timeStamp),
+            ("user", userName),
+            ("data", obj.Data.ToString(Formatting.None)
+            ));
 
         using ISqlServerDataReader<StorageObject> read = await cmd
             .ExecuteReaderAsync(
-                new[] { "ContentType", "Version", "Created" },
-                values => obj with { ContentType = (string)values[0], Version = (int)values[1], Created = (DateTime)values[2] },
-                CancellationToken.None);
-
+                new[] { "ContentType", "Version", "Created", "CreatedBy" },
+                values => new StorageObject((string)values[0], obj.Id, (int)values[1], (DateTime)values[2], timeStamp, (string)values[3], userName, obj.Data),
+                cancellation);
 
         return read.FirstOrDefault(); 
     }
 
-    public Task<StorageObject> UpdateAsync(Guid id, JObject obj)
-        => UpdateAsync(new StorageObject(string.Empty, id, -1, DateTime.MinValue, DateTime.MinValue, obj));
-
     public Task<StorageObject?> DeleteAsync(Guid id)
+        => DeleteAsync(id, CancellationToken.None);
+
+    public Task<StorageObject?> DeleteAsync(Guid id, CancellationToken cancellation)
+        => DeleteAsync(new DeleteStorageObject(string.Empty, id), cancellation);
+
+    public  Task<StorageObject?> DeleteAsync(DeleteStorageObject obj)
+        => DeleteAsync(obj, CancellationToken.None);
+
+    public async Task<StorageObject?> DeleteAsync(DeleteStorageObject obj, CancellationToken cancellation)
     {
-        throw new NotImplementedException();
+        await stateManager.Ensure();
+
+        DateTime timeStamp = obj.Updated ?? DateTime.UtcNow;
+        string userName = obj.UpdatedBy ?? context.UserInformation.UserName;
+
+        using ISqlServerCommand cmd = context.CommandFactory.Create(
+            SqlTemplates.DeleteFromDataTable(stateManager.Schema, stateManager.AreaName),
+            ("id", obj.Id),
+            ("timestamp", timeStamp),
+            ("user", userName));
+        
+        using ISqlServerDataReader<StorageObject> read = await cmd
+            .ExecuteReaderAsync(
+                ["Id", "ContentType", "Version", "Created", "Updated", "CreatedBy", "UpdatedBy", "Data"],
+                values => new StorageObject(
+                    (string)values[1],
+                    (Guid)values[0],
+                    (int)values[2],
+                    (DateTime)values[3],
+                    (DateTime)values[4],
+                    (string)values[5],
+                    (string)values[6],
+                    JObject.Parse((string)values[7])),
+                cancellation);
+
+        return read.FirstOrDefault();
     }
 
 

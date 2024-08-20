@@ -1,37 +1,44 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections;
 using System.Data;
-using System.Data.Common;
 using System.Data.SqlClient;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using DotJEM.Json.Storage2.Cache;
 using DotJEM.Json.Storage2.SqlServer.Initialization;
 
 namespace DotJEM.Json.Storage2.SqlServer;
 
+public interface IUserInformationProvider
+{
+    string UserName { get; }
+}
+
+public class DefaultUserInformationProvider : IUserInformationProvider
+{
+    public string UserName => Environment.UserName;
+}
+
 public class SqlServerStorageContext : IStorageContext
 {
-    public static async Task<SqlServerStorageContext> Create(string connectionString, string schema = "dbo")
+    //TODO: Factory/Builder instead for prober injection.
+    public static async Task<SqlServerStorageContext> Create(string connectionString, string schema = "dbo", IUserInformationProvider userInformationProvider = null)
     {
         SqlServerConnectionFactory connectionFactory = new SqlServerConnectionFactory(connectionString);
         SqlServerStorageAreaFactory areaFactory = await Temp.Create(schema, connectionFactory);
-        return new SqlServerStorageContext(connectionFactory, areaFactory);
+        return new SqlServerStorageContext(connectionFactory, areaFactory, userInformationProvider ?? new DefaultUserInformationProvider());
     } 
 
     private readonly AsyncCache<SqlServerStorageArea> areas = new();
     private readonly SqlServerStorageAreaFactory areaFactory;
 
     public ISqlServerConnectionFactory ConnectionFactory { get; }
-    public ISqlServerCommandBuilderFactory CommandBuilder { get; }
+    public ISqlServerCommandFactory CommandFactory { get; }
+    public IUserInformationProvider UserInformation { get; }
 
-    private SqlServerStorageContext(SqlServerConnectionFactory connectionFactory, SqlServerStorageAreaFactory areaFactory)
+    private SqlServerStorageContext(SqlServerConnectionFactory connectionFactory, SqlServerStorageAreaFactory areaFactory, IUserInformationProvider userInformation)
     {
         this.areaFactory = areaFactory;
         ConnectionFactory = connectionFactory;
-        CommandBuilder = new SqlServerCommandBuilderFactory(connectionFactory);
+        CommandFactory = new SqlServerCommandFactory(connectionFactory);
+        UserInformation = userInformation;
     }
 
     public async Task<IStorageArea> AreaAsync(string name)
@@ -56,79 +63,27 @@ public class SqlServerConnectionFactory : ISqlServerConnectionFactory
         this.connectionString = connectionString;
     }
 
-    public SqlConnection Create()
-    {
-        return new SqlConnection(connectionString);
-    }
+    public SqlConnection Create() => new(connectionString);
 }
-
-public interface ISqlServerCommandBuilderFactory
+public interface ISqlServerCommandFactory
 {
-    ISqlServerCommandBuilder From(string resource, string section = "default");
-
+    ISqlServerCommand Create(string commandText, params Parameter[] parameters);
 }
-
-public class SqlServerCommandBuilderFactory : ISqlServerCommandBuilderFactory
+public class SqlServerCommandFactory : ISqlServerCommandFactory
 {
     private readonly ISqlServerConnectionFactory connectionFactory;
 
-    public SqlServerCommandBuilderFactory(ISqlServerConnectionFactory connectionFactory)
+    public SqlServerCommandFactory(ISqlServerConnectionFactory connectionFactory)
     {
         this.connectionFactory = connectionFactory;
     }
 
-    public ISqlServerCommandBuilder From(string resource, string section =  "default")
+    public ISqlServerCommand Create(string commandText, params Parameter[] parameters)
     {
-        return new SqlServerCommandBuilder(connectionFactory, resource, section);
-    }
-}
-
-public interface ISqlServerCommandBuilder
-{
-    ISqlServerCommandBuilder Replace(params (string key, string value)[] replace);
-    ISqlServerCommandBuilder Parameters(params Parameter[] parameters);
-    ISqlServerCommand Build();
-}
-
-public class SqlServerCommandBuilder : ISqlServerCommandBuilder
-{
-    private readonly ISqlServerConnectionFactory connectionFactory;
-    private readonly string resource;
-    private readonly string section;
-
-    private readonly Dictionary<string, string> replacements = new Dictionary<string, string>();
-    private readonly List<Parameter> parameters = new List<Parameter>();
-
-    public SqlServerCommandBuilder(ISqlServerConnectionFactory connectionFactory, string resource, string section)
-    {
-        this.connectionFactory = connectionFactory;
-        this.resource = resource;
-        this.section = section;
-    }
-
-
-    public ISqlServerCommandBuilder Replace(params (string key, string value)[] replace)
-    {
-        foreach ((string key, string value) in replace)
-            replacements[key] = value;
-        return this;
-    }
-
-    public ISqlServerCommandBuilder Parameters(params Parameter[] parameters)
-    {
-        this.parameters.AddRange(parameters);
-        return this;
-    }
-
-    public ISqlServerCommand Build()
-    {
-        string commandText = SqlServerStatements.Load(resource, section, replacements);
-
         SqlConnection connection = connectionFactory.Create();
-        SqlCommand command = new SqlCommand(commandText, connection);
+        SqlCommand command = new (commandText, connection);
         foreach ((string name, SqlDbType sqlDbType, object value) in parameters)
             command.Parameters.Add(name, sqlDbType).Value = value;
-
         return new SqlServerCommand(connection, command);
     }
 }
@@ -154,18 +109,10 @@ public class SqlServerCommand : ISqlServerCommand
     public async Task<T> ExecuteScalarAsync<T>(CancellationToken cancellationToken)
     {
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-
-#if NETSTANDARD2_0
-        using SqlTransaction transaction = connection.BeginTransaction();
-        command.Transaction = transaction;
-        T value =  (T)(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException());
-        transaction.Commit();
-#else
         await using SqlTransaction transaction = connection.BeginTransaction();
         command.Transaction = transaction;
         T value = (T)(await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException());
         await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-#endif
         return value;
     }
 
