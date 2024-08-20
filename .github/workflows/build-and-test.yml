@@ -60,15 +60,6 @@ jobs:
         MSSQL_SA_PASSWORD: UUID58cf785a1c9c4bb3b62cb593d530c865!
         mssql_connection: "Data Source=localhost,1433; User Id=sa;Initial Catalog=storage2test;Password=UUID58cf785a1c9c4bb3b62cb593d530c865!;TrustServerCertificate=yes"
 
-    - name: Package
-      working-directory: ./src
-      run: > 
-        dotnet pack --configuration Release --no-restore 
-        /p:Version=${{steps.version.outputs.semver}}
-        /p:PackageVersion=${{steps.version.outputs.semver}}
-        /p:AssemblyVersion=${{steps.version.outputs.msver}}
-        /p:FileVersion=${{steps.version.outputs.msver}}
-      
     - name: Publish
       if: github.event_name == 'push'
       working-directory: ./src
