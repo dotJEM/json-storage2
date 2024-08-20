@@ -58,7 +58,7 @@ jobs:
       run: dotnet test --configuration Release --no-build --verbosity normal
       env:
         MSSQL_SA_PASSWORD: UUID58cf785a1c9c4bb3b62cb593d530c865!
-        mssql_connection: "Data Source=localhost,1433; User Id=sa;;Initial Catalog=storage2test;Password=UUID58cf785a1c9c4bb3b62cb593d530c865!"
+        mssql_connection: "Data Source=localhost,1433; User Id=sa;Initial Catalog=storage2test;Password=UUID58cf785a1c9c4bb3b62cb593d530c865!"
 
     - name: Package
       working-directory: ./src
