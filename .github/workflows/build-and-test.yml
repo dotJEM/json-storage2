@@ -36,7 +36,7 @@ jobs:
     # Starting the SQL Server here so that it has time to get up and running before we get to the tests, it seems doing this before the restore and build
     # is consistent enough.
     - name: Start SQLServer Image
-      run: docker run --name sql-server -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=UUID58cf785a1c9c4bb3b62cb593d530c865!" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2019-latest
+      run: docker run --name sql-server -e "ACCEPT_EULA=Y" -e "MSSQL_SA_PASSWORD=UUID58cf785a1c9c4bb3b62cb593d530c865!" -p 1433:1433 -d mcr.microsoft.com/mssql/server:2022-latest
             
     - name: Restore dependencies
       run: dotnet restore src/DotJEM.Json.Storage2.sln
