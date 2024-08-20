@@ -51,7 +51,7 @@ jobs:
         /p:FileVersion=${{steps.version.outputs.msver}}
     
     - name: Create Test Database
-      run: docker exec sql-server /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P UUID58cf785a1c9c4bb3b62cb593d530c865! -d master -Q "CREATE DATABASE storage2test" \
+      run: docker exec sql-server /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P UUID58cf785a1c9c4bb3b62cb593d530c865! -d master -Q "CREATE DATABASE storage2test" \
     
     - name: Test
       working-directory: ./src
