@@ -154,7 +154,7 @@ public readonly record struct Parameter(string Name, SqlDbType Type, object valu
 }
 
 
-public interface ISqlServerDataReader<out T> : IDisposable, IEnumerable<T>
+public interface ISqlServerDataReader<out T> : IDisposable, IEnumerable<T>, IAsyncEnumerable<T>
 {
 }
 
@@ -184,6 +184,18 @@ public class SqlServerDataReader<T> : ISqlServerDataReader<T>
         }
     }
 
+    public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken())
+    {
+        int[] c = columns.Select(name => reader.GetOrdinal(name)).ToArray();
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            //TODO: Better way of handling column specs as this is surely horrible performance, but function first!.
+            object[] values = new object[c.Length];
+            for (int i = 0; i < c.Length; i++)
+                values[i] = reader.GetValue(c[i]);
+            yield return factory(values);
+        }
+    }
 
     /// <inheritdoc />
     public void Dispose() => reader.Dispose();

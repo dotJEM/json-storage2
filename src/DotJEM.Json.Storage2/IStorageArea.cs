@@ -8,16 +8,11 @@ public interface IStorageArea
 {
     string Name { get; }
 
-#if NETSTANDARD2_0
-    //Task<IEnumerable<StorageObject>> GetAsync();
-    //Task<IEnumerable<StorageObject>> GetAsync(long skip, int take = 100);
-#else
-    //IAsyncEnumerable<StorageObject> GetAsync();
-    //IAsyncEnumerable<StorageObject> GetAsync(CancellationToken cancellation);
-    //IAsyncEnumerable<StorageObject> GetAsync(long skip);
-    //IAsyncEnumerable<StorageObject> GetAsync(long skip, CancellationToken cancellation);
-    //IAsyncEnumerable<StorageObject> GetAsync(long skip, int take, CancellationToken cancellation);
-#endif
+    IAsyncEnumerable<StorageObject> GetAsync();
+    IAsyncEnumerable<StorageObject> GetAsync(CancellationToken cancellation);
+    IAsyncEnumerable<StorageObject> GetAsync(long skip);
+    IAsyncEnumerable<StorageObject> GetAsync(long skip, CancellationToken cancellation);
+    IAsyncEnumerable<StorageObject> GetAsync(long skip, int take, CancellationToken cancellation);
 
     Task<StorageObject?> GetAsync(Guid id);
     Task<StorageObject?> GetAsync(Guid id, CancellationToken cancellation);

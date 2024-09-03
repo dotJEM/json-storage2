@@ -1,5 +1,5 @@
 ﻿--start:byid
-  SELECT [Id]
+SELECT [Id]
       ,[ContentType]
       ,[Version]
       ,[Created]
@@ -14,6 +14,7 @@
 
 --start:paged
 SELECT [Id]
+      ,[ContentType]
       ,[Version]
       ,[Created]
       ,[Updated]

@@ -11,6 +11,9 @@ namespace DotJEM.Json.Storage2.SqlServer;
 
 public class SqlServerStorageArea : IStorageArea
 {
+    private const long DEFAULT_SKIP = 0;
+    private const int DEFAULT_TAKE = 100;
+
     private readonly SqlServerStorageContext context;
     private readonly SqlServerAreaStateManager stateManager;
 
@@ -22,32 +25,48 @@ public class SqlServerStorageArea : IStorageArea
         this.stateManager = stateManager;
     }
 
+    public IAsyncEnumerable<StorageObject> GetAsync()
+        => GetAsync(DEFAULT_SKIP, DEFAULT_TAKE, CancellationToken.None);
 
-    //private const long DEFAULT_SKIP = 0;
-    //private const int DEFAULT_TAKE = 100;
+    public IAsyncEnumerable<StorageObject> GetAsync(CancellationToken cancellation)
+        => GetAsync(DEFAULT_SKIP, DEFAULT_TAKE, cancellation);
 
-    //public async IAsyncEnumerable<StorageObject> GetAsync()
-    //    => GetAsync(DEFAULT_SKIP, DEFAULT_TAKE, CancellationToken.None);
+    public IAsyncEnumerable<StorageObject> GetAsync(long skip)
+        => GetAsync(skip, DEFAULT_TAKE, CancellationToken.None);
 
-    //public async IAsyncEnumerable<StorageObject> GetAsync(CancellationToken cancellation)
-    //    => GetAsync(DEFAULT_SKIP, DEFAULT_TAKE, cancellation);
+    public IAsyncEnumerable<StorageObject> GetAsync(long skip, CancellationToken cancellation)
+        => GetAsync(skip, DEFAULT_TAKE, cancellation);
 
-    //public async IAsyncEnumerable<StorageObject> GetAsync(long skip)
-    //    => GetAsync(skip, DEFAULT_TAKE, CancellationToken.None);
+    public IAsyncEnumerable<StorageObject> GetAsync(long skip, int take)
+        => GetAsync(skip, take, CancellationToken.None);
 
-    //public async IAsyncEnumerable<StorageObject> GetAsync(long skip, CancellationToken cancellation)
-    //    => GetAsync(skip, DEFAULT_TAKE, cancellation);
+    public async IAsyncEnumerable<StorageObject> GetAsync(long skip, int take, CancellationToken cancellation)
+    {
+        if (!stateManager.Exists)
+            yield break;
 
-    //public async IAsyncEnumerable<StorageObject> GetAsync(long skip, int take)
-    //    => GetAsync(skip, take, CancellationToken.None);
+        using ISqlServerCommand cmd = context.CommandFactory.Create(
+            SqlTemplates.SelectFromDataTable_Paged(stateManager.Schema, stateManager.AreaName),
+            ("take", take),
+            ("skip", skip));
 
-    //public async IAsyncEnumerable<StorageObject> GetAsync(long skip, int take, CancellationToken cancellation)
-    //{
-    //    if (!stateManager.Exists)
-    //        yield break;
+        ISqlServerDataReader<StorageObject> read = await cmd
+            .ExecuteReaderAsync(
+                ["Id", "ContentType", "Version", "Created", "Updated", "CreatedBy", "UpdatedBy", "Data"],
+                values => new StorageObject(
+                    (string)values[1],
+                    (Guid)values[0],
+                    (int)values[2],
+                    (DateTime)values[3],
+                    (DateTime)values[4],
+                    (string)values[5],
+                    (string)values[6],
+                    JObject.Parse((string)values[7])),
+                CancellationToken.None);
 
-    //    throw new NotImplementedException();
-    //}
+        await foreach (StorageObject obj in read)
+            yield return obj;
+    }
 
 
 
@@ -58,10 +77,10 @@ public class SqlServerStorageArea : IStorageArea
     {
         if (!stateManager.Exists)
             return null;
+
         using ISqlServerCommand cmd = context.CommandFactory.Create(
             SqlTemplates.SelectFromDataTable_Byid(stateManager.Schema, stateManager.AreaName),
             ("id", id));
-
 
         using ISqlServerDataReader<StorageObject> read = await cmd
             .ExecuteReaderAsync(

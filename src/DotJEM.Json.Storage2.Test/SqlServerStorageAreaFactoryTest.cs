@@ -36,6 +36,24 @@ public class SqlServerStorageContextIntegrationTest
 
         StorageObject? so5 = await area.GetAsync(so.Id);
         Console.WriteLine(so5);
-
     }
+
+    [Test]
+    public async Task GetAsync_NoTableExists_ShouldCreateTables()
+    {
+        SqlServerStorageContext context = await SqlServerStorageContext
+            .Create(TestSqlConnectionFactory.ConnectionString, "fox");
+        IStorageArea area = await context.AreaAsync("test");
+        
+        await area.InsertAsync("na", JObject.FromObject(new { track="T-01"}));
+        await area.InsertAsync("na", JObject.FromObject(new { track= "T-02" }));
+        await area.InsertAsync("na", JObject.FromObject(new { track= "T-03" }));
+
+
+        await foreach (StorageObject obj in area.GetAsync())
+        {
+            Console.WriteLine(obj);
+        }
+    }
+
 }
