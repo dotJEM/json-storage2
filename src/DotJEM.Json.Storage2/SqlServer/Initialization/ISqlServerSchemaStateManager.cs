@@ -97,11 +97,11 @@ public class SqlServerAreaStateManager : ISqlServerSchemaStateManager
         string schemaTableCommandText = SqlTemplates.CreateSchemasTable(Schema, AreaName); // SqlServerStatements.Load("CreateSchemasTable", map);
 
         //await using SqlConnection connection = connectionFactory.Create();
-        using SqlConnection connection = connectionFactory.Create();
+        await using SqlConnection connection = connectionFactory.Create();
         await connection.OpenAsync().ConfigureAwait(false);
 
         //await using SqlTransaction transaction = connection.BeginTransaction(IsolationLevel.ReadUncommitted);
-        using SqlTransaction transaction = connection.BeginTransaction(IsolationLevel.ReadUncommitted);
+        await using SqlTransaction transaction = connection.BeginTransaction(IsolationLevel.ReadUncommitted);
         await Execute(dataTableCommandText, connection, transaction);
         await Execute(logTableCommandText, connection, transaction);
         await Execute(schemaTableCommandText, connection, transaction);
@@ -114,7 +114,7 @@ public class SqlServerAreaStateManager : ISqlServerSchemaStateManager
     private async Task Execute(string commandText, SqlConnection connection, SqlTransaction transaction)
     {
         //await using SqlCommand command = new(commandText);
-        using SqlCommand command = new(commandText);
+        await using SqlCommand command = new(commandText);
         command.Connection = connection;
         command.Transaction = transaction;
         await command.ExecuteNonQueryAsync().ConfigureAwait(false);
