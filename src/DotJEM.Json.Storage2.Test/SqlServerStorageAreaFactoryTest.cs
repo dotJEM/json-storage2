@@ -1,5 +1,4 @@
-﻿using System.Data.SqlClient;
-using DotJEM.Json.Storage2.SqlServer;
+﻿using DotJEM.Json.Storage2.SqlServer;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
@@ -13,6 +12,9 @@ public class SqlServerStorageContextIntegrationTest
         SqlServerStorageContext context = await SqlServerStorageContext.Create(TestSqlConnectionFactory.ConnectionString);
         IStorageArea area = await context.AreaAsync("test");
         await area.InsertAsync("na", new JObject());
+
+
+
     }
 
     [Test]
@@ -48,12 +50,23 @@ public class SqlServerStorageContextIntegrationTest
         await area.InsertAsync("na", JObject.FromObject(new { track="T-01"}));
         await area.InsertAsync("na", JObject.FromObject(new { track= "T-02" }));
         await area.InsertAsync("na", JObject.FromObject(new { track= "T-03" }));
-
-
         await foreach (StorageObject obj in area.GetAsync())
         {
             Console.WriteLine(obj);
         }
+    }
+
+    [Test]
+    public async Task InsertAsync_Record_ShouldAddToTable()
+    {
+        SqlServerStorageContext context = await SqlServerStorageContext.Create(TestSqlConnectionFactory.ConnectionString, "fox");
+        IStorageArea area = await context.AreaAsync("test");
+
+        StorageObject obj = await area.InsertAsync("na", JObject.FromObject(new { track = "T-01" }));
+        StorageObject? obj2 = await area.GetAsync(obj.Id);
+
+        Assert.That(obj2, Is.Not.Null & Has.Property(nameof(StorageObject.UpdatedBy)).EqualTo(obj.UpdatedBy));
+
     }
 
 }

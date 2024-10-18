@@ -2,7 +2,7 @@
     [Revision] [bigint] IDENTITY(1,1) NOT NULL,
     [Id] [uniqueidentifier] NOT NULL,
     [Event] [varchar](1) NOT NULL,
-    [Time] [datetime] NOT NULL,
+    [Time] [datetime2] NOT NULL,
     [User] [nvarchar](256) NULL, 
     [Version] [bigint] NOT NULL,
     [Data] [nvarchar](max) NOT NULL,

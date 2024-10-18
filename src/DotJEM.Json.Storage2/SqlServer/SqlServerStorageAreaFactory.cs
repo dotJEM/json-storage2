@@ -45,7 +45,7 @@ public class SqlServerStorageAreaFactory
             return new(context, areaInfo.State);
 
         await padlock.WaitAsync().ConfigureAwait(false);
-        AreaInfo area = new(name, new(context.ConnectionFactory, schema.SchemaName, name, false));
+        AreaInfo area = new(name, new(context.ConnectionFactory, schema.Schema, name, false));
         areas.Add(name, area);
         return new(context, area.State);
     }

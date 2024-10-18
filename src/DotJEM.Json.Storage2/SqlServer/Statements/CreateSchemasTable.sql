@@ -2,8 +2,8 @@
     [Id] [uniqueidentifier] NOT NULL,
     [Version] [int] NOT NULL,
     [ContentType] [varchar](64) NOT NULL,
-    [Created] [datetime] NOT NULL,
-    [Updated] [datetime] NOT NULL,
+    [Created] [datetime2] NOT NULL,
+    [Updated] [datetime2] NOT NULL,
     [Data] [nvarchar](max) NOT NULL,
     [RV] [rowversion] NOT NULL,
     CONSTRAINT [PK_@{area_name}.schemas] PRIMARY KEY CLUSTERED ( [Id] ASC )
