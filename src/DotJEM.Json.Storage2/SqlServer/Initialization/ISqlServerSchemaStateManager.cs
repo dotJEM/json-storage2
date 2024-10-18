@@ -30,7 +30,9 @@ public class SqlServerSchemaStateManager : ISqlServerSchemaStateManager
         if (created)
             return;
 
-        await padlock.WaitAsync();
+        using IDisposable locked = await padlock.ObtainLockAsync();
+        if (created)
+            return;
 
         string commandText = SqlTemplates.CreateSchema(Schema);
 
@@ -45,7 +47,20 @@ public class SqlServerSchemaStateManager : ISqlServerSchemaStateManager
         await transaction.CommitAsync().ConfigureAwait(false);
 
         created = true;
-        padlock.Release();
+    }
+}
+
+public static class SemaphoreSlimExt
+{
+    public static async Task<IDisposable> ObtainLockAsync(this SemaphoreSlim semaphore)
+    {
+        await semaphore.WaitAsync();
+        return new ObtainedLock(semaphore);
+    }
+
+    private class ObtainedLock(SemaphoreSlim semaphore) : IDisposable
+    {
+        public void Dispose() => semaphore.Release();
     }
 }
 
@@ -73,7 +88,7 @@ public class SqlServerAreaStateManager : ISqlServerSchemaStateManager
         if (created)
             return;
 
-        await padlock.WaitAsync();
+        using IDisposable locked = await padlock.ObtainLockAsync();
         if (created)
             return;
 
@@ -94,7 +109,6 @@ public class SqlServerAreaStateManager : ISqlServerSchemaStateManager
         transaction.Commit();
 
         created = true;
-        padlock.Release();
     }
 
     private async Task Execute(string commandText, SqlConnection connection, SqlTransaction transaction)
