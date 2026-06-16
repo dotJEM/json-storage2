@@ -7,7 +7,7 @@ public interface ISqlServerSchemaStateManager
 {
     string Schema { get; }
 
-    Task Ensure();
+    Task<bool> Ensure();
 }
 
 public class SqlServerSchemaStateManager : ISqlServerSchemaStateManager
@@ -15,7 +15,7 @@ public class SqlServerSchemaStateManager : ISqlServerSchemaStateManager
     private bool created;
     private readonly SqlServerConnectionFactory connectionFactory;
     private readonly SemaphoreSlim padlock = new(1, 1);
-  
+
     public string Schema { get; }
 
     public SqlServerSchemaStateManager(SqlServerConnectionFactory connectionFactory, string schema, bool created)
@@ -25,14 +25,15 @@ public class SqlServerSchemaStateManager : ISqlServerSchemaStateManager
         this.created = created;
     }
 
-    public async Task Ensure()
+    public async Task<bool> Ensure()
     {
         if (created)
-            return;
+            return created;
 
-        using IDisposable locked = await padlock.ObtainLockAsync();
+        await padlock.WaitAsync();
+
         if (created)
-            return;
+            return created;
 
         string commandText = SqlTemplates.CreateSchema(Schema);
 
@@ -47,21 +48,12 @@ public class SqlServerSchemaStateManager : ISqlServerSchemaStateManager
         await transaction.CommitAsync().ConfigureAwait(false);
 
         created = true;
-    }
-}
+        padlock.Release();
 
-public static class SemaphoreSlimExt
-{
-    public static async Task<IDisposable> ObtainLockAsync(this SemaphoreSlim semaphore)
-    {
-        await semaphore.WaitAsync();
-        return new ObtainedLock(semaphore);
+        return created;
     }
 
-    private class ObtainedLock(SemaphoreSlim semaphore) : IDisposable
-    {
-        public void Dispose() => semaphore.Release();
-    }
+
 }
 
 public class SqlServerAreaStateManager : ISqlServerSchemaStateManager
@@ -83,25 +75,26 @@ public class SqlServerAreaStateManager : ISqlServerSchemaStateManager
     }
 
 
-    public async Task Ensure()
+    public async Task<bool> Ensure()
     {
         if (created)
-            return;
+            return created;
 
-        using IDisposable locked = await padlock.ObtainLockAsync();
+        await padlock.WaitAsync();
+
         if (created)
-            return;
+            return created;
 
         string dataTableCommandText = SqlTemplates.CreateDataTable(Schema, AreaName);//  SqlServerStatements.Load("CreateDataTable", map);
         string logTableCommandText = SqlTemplates.CreateLogTable(Schema, AreaName); // SqlServerStatements.Load("CreateLogTable", map);
         string schemaTableCommandText = SqlTemplates.CreateSchemasTable(Schema, AreaName); // SqlServerStatements.Load("CreateSchemasTable", map);
 
         //await using SqlConnection connection = connectionFactory.Create();
-        await using SqlConnection connection = connectionFactory.Create();
+        using SqlConnection connection = connectionFactory.Create();
         await connection.OpenAsync().ConfigureAwait(false);
 
         //await using SqlTransaction transaction = connection.BeginTransaction(IsolationLevel.ReadUncommitted);
-        await using SqlTransaction transaction = connection.BeginTransaction(IsolationLevel.ReadUncommitted);
+        using SqlTransaction transaction = connection.BeginTransaction(IsolationLevel.ReadUncommitted);
         await Execute(dataTableCommandText, connection, transaction);
         await Execute(logTableCommandText, connection, transaction);
         await Execute(schemaTableCommandText, connection, transaction);
@@ -109,12 +102,15 @@ public class SqlServerAreaStateManager : ISqlServerSchemaStateManager
         transaction.Commit();
 
         created = true;
+        padlock.Release();
+
+        return created;
     }
 
     private async Task Execute(string commandText, SqlConnection connection, SqlTransaction transaction)
     {
         //await using SqlCommand command = new(commandText);
-        await using SqlCommand command = new(commandText);
+        using SqlCommand command = new(commandText);
         command.Connection = connection;
         command.Transaction = transaction;
         await command.ExecuteNonQueryAsync().ConfigureAwait(false);

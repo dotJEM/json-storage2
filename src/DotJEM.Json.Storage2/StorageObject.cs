@@ -1,20 +1,21 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+﻿namespace DotJEM.Json.Storage2;
 
-namespace DotJEM.Json.Storage2;
 
-//TODO: Can re decouple this from Newtonsoft.Json.Linq so users can select either that or System.Text.Json
+public readonly record struct StorageChange<TJson>(long Revision, Guid Id, char Event, int Version, DateTime Time, string User, TJson Data)
+{
+
+}
+
 /// <summary/>
-public readonly record struct StorageObject(
-    string ContentType, Guid Id, int Version,
-    DateTime Created, DateTime Updated, string CreatedBy, string UpdatedBy,
-    JObject Data) {
+public readonly record struct StorageObject<TJson>(string ContentType, Guid Id, int Version, DateTime Created, DateTime Updated, string CreatedBy,
+    string UpdatedBy, TJson Data)
+{
 
     /// <summary/>
     public override string ToString()
     {
         return $"{ContentType}/{Id} Version={Version}, Created={Created:O} By={CreatedBy}, Updated={Updated:O} By={UpdatedBy}" +
-               $"\n{Data.ToString(Formatting.Indented)}";
+               $"{Environment.NewLine}{Data}";
     }
 
     /// <summary>
@@ -25,8 +26,8 @@ public readonly record struct StorageObject(
     /// When converting to an update object it only includes the <see cref="ContentType"/>, <see cref="Id"/> and <see cref="Data"/>
     /// properties, and leaves the rest for the <see cref="IStorageArea"/> to manage.
     /// </remarks>
-    public static implicit operator UpdateStorageObject(StorageObject o)
-        => new (o.ContentType, o.Id, o.Data);
+    public static implicit operator UpdateStorageObject<TJson>(StorageObject<TJson> o)
+        => new(o.ContentType, o.Id, o.Data);
 
     /// <summary>
     /// Converts <see cref="StorageObject"/> into an <see cref="InsertStorageObject"/>
@@ -36,8 +37,8 @@ public readonly record struct StorageObject(
     /// When converting to an update object it only includes the <see cref="ContentType"/> and <see cref="Data"/>
     /// properties, and leaves the rest for the <see cref="IStorageArea"/> to manage.
     /// </remarks>
-    public static implicit operator InsertStorageObject(StorageObject o)
-        => new (o.ContentType, o.Data);
+    public static implicit operator InsertStorageObject<TJson>(StorageObject<TJson> o)
+        => new(o.ContentType, o.Data);
 }
 
 /// <summary>
@@ -48,7 +49,7 @@ public readonly record struct StorageObject(
 /// <param name="Data"></param>
 /// <param name="Updated"></param>
 /// <param name="UpdatedBy"></param>
-public readonly record struct UpdateStorageObject(string ContentType, Guid Id, JObject Data, DateTime? Updated = null, string? UpdatedBy = null);
+public readonly record struct UpdateStorageObject<TJson>(string ContentType, Guid Id, TJson Data, DateTime? Updated = null, string? UpdatedBy = null);
 
 /// <summary>
 /// 
@@ -57,7 +58,7 @@ public readonly record struct UpdateStorageObject(string ContentType, Guid Id, J
 /// <param name="Data"></param>
 /// <param name="Created"></param>
 /// <param name="CreatedBy"></param>
-public readonly record struct InsertStorageObject(string ContentType, JObject Data, DateTime? Created = null, string? CreatedBy = null);
+public readonly record struct InsertStorageObject<TJson>(string ContentType, TJson Data, DateTime? Created = null, string? CreatedBy = null);
 
 /// <summary>
 /// 

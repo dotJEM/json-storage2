@@ -1,16 +1,33 @@
 ﻿using DotJEM.Json.Storage2.SqlServer;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
+using System.Text.Json.Serialization;
 
 namespace DotJEM.Json.Storage2.Test;
+
+public class NewtonsoftJsonConverter : IJsonConverter<JObject>
+{
+    public JObject Parse(string json)
+    {
+        return JObject.Parse(json);
+    }
+
+    public string ToString(JObject document, bool indent = false)
+    {
+        return document.ToString(indent ? Formatting.Indented : Formatting.None);
+    }
+}
 
 public class SqlServerStorageContextIntegrationTest
 {
     [Test]
     public async Task EnsureLogTable_NoTableExists_ShouldCreateTable()
     {
-        SqlServerStorageContext context = await SqlServerStorageContext.Create(TestSqlConnectionFactory.ConnectionString);
-        IStorageArea area = await context.AreaAsync("test");
+        IStorageContext<JObject> context = await new SqlServerStorageContextBuilder<JObject>(TestSqlConnectionFactory.ConnectionString, new NewtonsoftJsonConverter())
+            .Build();
+
+        IStorageArea<JObject> area = await context.AreaAsync("test");
         await area.InsertAsync("na", new JObject());
 
 
@@ -20,37 +37,40 @@ public class SqlServerStorageContextIntegrationTest
     [Test]
     public async Task EnsureLogTable_NoTableExists_ShouldCreateTables()
     {
-        SqlServerStorageContext context = await SqlServerStorageContext
-            .Create(TestSqlConnectionFactory.ConnectionString, "fox");
-        IStorageArea area = await context.AreaAsync("test");
-        StorageObject so = await area.InsertAsync("na",new JObject());
+        IStorageContext<JObject> context = await new SqlServerStorageContextBuilder<JObject>(TestSqlConnectionFactory.ConnectionString, new NewtonsoftJsonConverter())
+            .ForSchema("fox")
+            .Build();
+
+        IStorageArea<JObject> area = await context.AreaAsync("test");
+        StorageObject<JObject> so = await area.InsertAsync("na", new JObject());
 
         Console.WriteLine(so);
-        
-        StorageObject? so2 = await area.GetAsync(so.Id);
+
+        StorageObject<JObject>? so2 = await area.GetAsync(so.Id);
         Console.WriteLine(so2);
 
-        StorageObject so3 = await area.UpdateAsync(so.Id, JObject.FromObject(new { foo = "Fax" }));
+        StorageObject<JObject> so3 = await area.UpdateAsync(so.Id, JObject.FromObject(new { foo = "Fax" }));
         Console.WriteLine(so3);
 
-        StorageObject so4 = await area.UpdateAsync(so.Id, JObject.FromObject(new { foo = "Foo" }));
+        StorageObject<JObject> so4 = await area.UpdateAsync(so.Id, JObject.FromObject(new { foo = "Foo" }));
         Console.WriteLine(so4);
 
-        StorageObject? so5 = await area.GetAsync(so.Id);
+        StorageObject<JObject>? so5 = await area.GetAsync(so.Id);
         Console.WriteLine(so5);
     }
 
     [Test]
     public async Task GetAsync_NoTableExists_ShouldCreateTables()
     {
-        SqlServerStorageContext context = await SqlServerStorageContext
-            .Create(TestSqlConnectionFactory.ConnectionString, "fox");
-        IStorageArea area = await context.AreaAsync("test");
-        
-        await area.InsertAsync("na", JObject.FromObject(new { track="T-01"}));
-        await area.InsertAsync("na", JObject.FromObject(new { track= "T-02" }));
-        await area.InsertAsync("na", JObject.FromObject(new { track= "T-03" }));
-        await foreach (StorageObject obj in area.GetAsync())
+        IStorageContext<JObject> context = await new SqlServerStorageContextBuilder<JObject>(TestSqlConnectionFactory.ConnectionString, new NewtonsoftJsonConverter())
+            .ForSchema("fox")
+            .Build();
+        IStorageArea<JObject> area = await context.AreaAsync("test");
+
+        await area.InsertAsync("na", JObject.FromObject(new { track = "T-01" }));
+        await area.InsertAsync("na", JObject.FromObject(new { track = "T-02" }));
+        await area.InsertAsync("na", JObject.FromObject(new { track = "T-03" }));
+        await foreach (StorageObject<JObject> obj in area.GetAsync())
         {
             Console.WriteLine(obj);
         }
@@ -59,14 +79,88 @@ public class SqlServerStorageContextIntegrationTest
     [Test]
     public async Task InsertAsync_Record_ShouldAddToTable()
     {
-        SqlServerStorageContext context = await SqlServerStorageContext.Create(TestSqlConnectionFactory.ConnectionString, "fox");
-        IStorageArea area = await context.AreaAsync("test");
+        IStorageContext<JObject> context = await new SqlServerStorageContextBuilder<JObject>(TestSqlConnectionFactory.ConnectionString, new NewtonsoftJsonConverter())
+            .ForSchema("fox")
+            .Build();
 
-        StorageObject obj = await area.InsertAsync("na", JObject.FromObject(new { track = "T-01" }));
-        StorageObject? obj2 = await area.GetAsync(obj.Id);
+        IStorageArea<JObject> area = await context.AreaAsync("test");
 
-        Assert.That(obj2, Is.Not.Null & Has.Property(nameof(StorageObject.UpdatedBy)).EqualTo(obj.UpdatedBy));
+        StorageObject<JObject> obj = await area.InsertAsync("na", JObject.FromObject(new { track = "T-01" }));
+        StorageObject<JObject>? obj2 = await area.GetAsync(obj.Id);
+
+        Assert.That(obj2, Is.Not.Null & Has.Property(nameof(StorageObject<JObject>.UpdatedBy)).EqualTo(obj.UpdatedBy));
 
     }
+
+    [Test, Explicit]
+    public async Task GetAsync_ChangeLog()
+    {
+        IStorageContext<JObject> context = await new SqlServerStorageContextBuilder<JObject>(TestSqlConnectionFactory.ConnectionString, new NewtonsoftJsonConverter())
+            .ForSchema("fox")
+            .Build();
+        IStorageArea<JObject> area = await context.AreaAsync("dataobjs");
+
+        int expectedGeneration = 0;
+        List<StorageObject<JObject>> objects = new List<StorageObject<JObject>>();
+        for (int i = 0; i < 100000; i++)
+        {
+            switch (Random.Shared.Next(100) % 6)
+            {
+                case 0:
+                case 1:
+                case 2:
+                    StorageObject<JObject> created = await area.InsertAsync("na", JObject.FromObject(new { track = $"T-{i:000}" }));
+                    expectedGeneration++;
+                    objects.Add(created);
+                    Console.WriteLine("Created: " + created.Id);
+                    break;
+
+                case 3:
+                case 4:
+                    if (objects.Count > 0)
+                    {
+                        StorageObject<JObject> obj = objects[Random.Shared.Next(objects.Count)];
+                        obj.Data["udidx"] = i;
+                        await area.UpdateAsync(obj);
+                        expectedGeneration++;
+                        Console.WriteLine("Updated: " + obj.Id);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Update nothing");
+
+                    }
+                    break;
+
+
+                case 5:
+                    if (objects.Count > 0)
+                    {
+                        StorageObject<JObject> obj = objects[Random.Shared.Next(objects.Count)];
+                        StorageObject<JObject>? deleted = await area.DeleteAsync(obj.Id);
+                        if (deleted != null)
+                        {
+                            objects.Remove(obj);
+                            expectedGeneration++;
+                        }
+                        Console.WriteLine("Deleted: " + obj.Id);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Delete nothing");
+                    }
+                    break;
+
+            }
+
+           
+        }
+
+        Assert.That(area.Log.LatestGeneration, Is.EqualTo(expectedGeneration));
+
+
+    }
+
+
 
 }
