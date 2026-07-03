@@ -67,8 +67,7 @@ public interface IStorageAreaLog<TJson>
     /// <summary>
     /// Gets the latest generation stored in the database.
     /// </summary>
-    long LatestGeneration { get; }
-
+    Task<long> GetLatestGeneration();
 
     /// <summary>
     /// Gets the next batch of changes.
@@ -78,7 +77,7 @@ public interface IStorageAreaLog<TJson>
     /// </remarks>
     /// <param name="includeDeletes">If <code>true</code>, returns all types of changes; If <code>false</code>, it skips deletes.</param>
     /// <param name="count">The maximum number of changes to return.</param>
-    Task<IStorageAreaChangeCollection<TJson>> Get(bool includeDeletes = true, int count = 5000);
+    Task<IStorageAreaChangeCollection<TJson>> Get(int count = 5000, bool includeDeletes = true);
 
     /// <summary>
     /// Gets a batch of changes from the provided <see cref="generation"/>.
@@ -93,7 +92,7 @@ public interface IStorageAreaLog<TJson>
     /// <param name="includeDeletes">If <code>true</code>, returns all types of changes; If <code>false</code>, it skips deletes.</param>
     /// <param name="count">The maximum number of changes to return.</param>
     /// <returns></returns>
-    Task<IStorageAreaChangeCollection<TJson>> Get(long generation, bool includeDeletes = true, int count = 5000);
+    Task<IStorageAreaChangeCollection<TJson>> Get(long generation, int count = 5000, bool includeDeletes = true);
 
     IStorageAreaLogObserver<TJson> OpenOberver();
 

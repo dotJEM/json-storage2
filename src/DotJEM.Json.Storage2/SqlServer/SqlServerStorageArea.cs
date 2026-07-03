@@ -111,7 +111,6 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
     {
         await stateManager.Ensure();
 
-
         DateTime timeStamp = obj.Created ?? DateTime.UtcNow;
         string userName = obj.CreatedBy ?? context.AuditInformation.UserName;
 
@@ -210,13 +209,24 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
 public class SqlServerStorageAreaLog<TJson>(SqlServerStorageContext<TJson> context, SqlServerAreaStateManager stateManager) : IStorageAreaLog<TJson>
 {
     public long CurrentGeneration { get; private set; }
-    public long LatestGeneration { get; private set; }
 
-    public Task<IStorageAreaChangeCollection<TJson>> Get(bool includeDeletes = true, int count = 5000)
-        => Get(CurrentGeneration, includeDeletes, count);
-
-    public async Task<IStorageAreaChangeCollection<TJson>> Get(long generation, bool includeDeletes = true, int count = 5000)
+    public async Task<long> GetLatestGeneration()
     {
+        if(!stateManager.Exists)
+            return 0;
+
+        using ISqlServerCommand cmd = context.CommandFactory.Create(SqlTemplates.SelectFromChangeLogTable_LatestGeneration(stateManager.Schema, stateManager.AreaName));
+        return await cmd.ExecuteScalarAsync<long>(CancellationToken.None);
+    }
+
+    public Task<IStorageAreaChangeCollection<TJson>> Get(int count = 5000, bool includeDeletes = true)
+        => Get(CurrentGeneration, count, includeDeletes);
+
+    public async Task<IStorageAreaChangeCollection<TJson>> Get(long generation, int count = 5000, bool includeDeletes = true)
+    {
+        if (!stateManager.Exists)
+            return new StorageAreaChangeCollection<TJson>([]);
+
         using ISqlServerCommand cmd = context.CommandFactory.Create(
             SqlTemplates.SelectFromChangeLogTable_Paged(stateManager.Schema, stateManager.AreaName),
             ("count", count),
@@ -228,7 +238,7 @@ public class SqlServerStorageAreaLog<TJson>(SqlServerStorageContext<TJson> conte
                 values => new StorageChange<TJson>(
                     (long)values[0],
                     (Guid)values[1],
-                    (char)values[2],
+                    ((string)values[2])[0],
                     (int)values[5],
                     (DateTime)values[3],
                     (string)values[4],
@@ -236,9 +246,11 @@ public class SqlServerStorageAreaLog<TJson>(SqlServerStorageContext<TJson> conte
                 ),
                 CancellationToken.None);
 
-        List<StorageChange<TJson>> changes = new(5000);
+        List<StorageChange<TJson>> changes = new(count);
         await foreach (StorageChange<TJson> obj in read)
             changes.Add(obj);
+
+        this.CurrentGeneration = changes.Last().Revision;
 
         return new StorageAreaChangeCollection<TJson>(changes);
     }

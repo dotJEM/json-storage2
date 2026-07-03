@@ -92,17 +92,17 @@ public class SqlServerStorageContextIntegrationTest
 
     }
 
-    [Test, Explicit]
+    [Test]
     public async Task GetAsync_ChangeLog()
     {
         IStorageContext<JObject> context = await new SqlServerStorageContextBuilder<JObject>(TestSqlConnectionFactory.ConnectionString, new NewtonsoftJsonConverter())
             .ForSchema("fox")
             .Build();
-        IStorageArea<JObject> area = await context.AreaAsync("dataobjs");
+        IStorageArea<JObject> area = await context.AreaAsync("changes_test");
 
-        int expectedGeneration = 0;
+        long expectedGeneration = await area.Log.GetLatestGeneration();
         List<StorageObject<JObject>> objects = new List<StorageObject<JObject>>();
-        for (int i = 0; i < 100000; i++)
+        for (int i = 0; i < 1000; i++)
         {
             switch (Random.Shared.Next(100) % 6)
             {
@@ -112,7 +112,6 @@ public class SqlServerStorageContextIntegrationTest
                     StorageObject<JObject> created = await area.InsertAsync("na", JObject.FromObject(new { track = $"T-{i:000}" }));
                     expectedGeneration++;
                     objects.Add(created);
-                    Console.WriteLine("Created: " + created.Id);
                     break;
 
                 case 3:
@@ -123,12 +122,6 @@ public class SqlServerStorageContextIntegrationTest
                         obj.Data["udidx"] = i;
                         await area.UpdateAsync(obj);
                         expectedGeneration++;
-                        Console.WriteLine("Updated: " + obj.Id);
-                    }
-                    else
-                    {
-                        Console.WriteLine("Update nothing");
-
                     }
                     break;
 
@@ -143,22 +136,20 @@ public class SqlServerStorageContextIntegrationTest
                             objects.Remove(obj);
                             expectedGeneration++;
                         }
-                        Console.WriteLine("Deleted: " + obj.Id);
-                    }
-                    else
-                    {
-                        Console.WriteLine("Delete nothing");
                     }
                     break;
-
             }
-
-           
         }
+        Assert.That(await area.Log.GetLatestGeneration(), Is.EqualTo(expectedGeneration));
 
-        Assert.That(area.Log.LatestGeneration, Is.EqualTo(expectedGeneration));
-
-
+        long lastGen = 0;
+        for (int i = 0; i < 10; i++)
+        {
+            IStorageAreaChangeCollection<JObject> changes = await area.Log.Get(100);
+            lastGen += 100;
+            Assert.That(area.Log.CurrentGeneration, Is.GreaterThanOrEqualTo(lastGen));
+            lastGen = area.Log.CurrentGeneration;
+        }
     }
 
 

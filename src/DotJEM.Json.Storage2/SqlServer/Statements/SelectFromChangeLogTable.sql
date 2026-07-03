@@ -12,6 +12,10 @@ FROM (
     WHERE [Revision] > @start
     GROUP BY [Id]
     ) temp
-    JOIN  [@{schema}].[@{area_name}.log] cl ON cl.Revision = temp.Latest
+    JOIN [@{schema}].[@{area_name}.log] cl ON cl.Revision = temp.Latest
 ORDER BY [Revision]
 --end:paged
+
+--start:latestGeneration
+SELECT MAX([Revision]) FROM [@{schema}].[@{area_name}.log]
+--end:latestGeneration
