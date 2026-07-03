@@ -29,9 +29,6 @@ public class SqlServerStorageContextIntegrationTest
 
         IStorageArea<JObject> area = await context.AreaAsync("test");
         await area.InsertAsync("na", new JObject());
-
-
-
     }
 
     [Test]
