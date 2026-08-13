@@ -1,4 +1,6 @@
-﻿namespace DotJEM.Json.Storage2;
+﻿using DotJEM.Json.Storage2.SqlServer;
+
+namespace DotJEM.Json.Storage2;
 
 /// <summary>
 /// 
@@ -15,4 +17,6 @@ public interface IStorageContext<TJson>
 public interface IStorageContextBuilder<TJson>
 {
     Task<IStorageContext<TJson>> Build();
+    SqlServerStorageContextBuilder<TJson> ForSchema(string name);
+    SqlServerStorageContextBuilder<TJson> Use(IAuditInformationProvider auditInformationProvider);
 }
