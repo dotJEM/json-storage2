@@ -82,7 +82,7 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
         using ISqlServerCommand cmd = context.CommandFactory.Create(
             SqlTemplates.SelectFromDataTable_Byid(stateManager.Schema, stateManager.AreaName),
             ("id", id));
-
+        
         using ISqlServerDataReader<StorageObject<TJson>> read = await cmd
             .ExecuteReaderAsync(
                 ["Id", "ContentType", "Version", "Created", "Updated", "CreatedBy", "UpdatedBy", "Data"],
@@ -250,6 +250,7 @@ public class SqlServerStorageAreaLog<TJson>(SqlServerStorageContext<TJson> conte
         await foreach (StorageChange<TJson> obj in read)
             changes.Add(obj);
 
+
         this.CurrentGeneration = changes.Last().Revision;
 
         return new StorageAreaChangeCollection<TJson>(changes);
@@ -261,7 +262,7 @@ public class SqlServerStorageAreaLog<TJson>(SqlServerStorageContext<TJson> conte
     }
 }
 
-public class StorageAreaChangeCollection<TJson>(List<StorageChange<TJson>> changes) : IStorageAreaChangeCollection<TJson>
+public record struct StorageAreaChangeCollection<TJson>(List<StorageChange<TJson>> changes) : IStorageAreaChangeCollection<TJson>
 {
 
 }

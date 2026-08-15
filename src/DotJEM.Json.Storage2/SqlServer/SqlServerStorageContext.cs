@@ -213,6 +213,14 @@ public class SqlServerCommand : ISqlServerCommand
         return new SqlServerDataReader<T>(columns, factory, reader);
     }
 
+    public async Task<ISqlServerDataReader<T>> ExecuteReaderAsync<T, TTuple>(string[] columns, Func<TTuple[], T> factory, CancellationToken cancellationToken)
+    {
+        //await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+        //SqlDataReader? reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        //return new SqlServerDataReader<T>(columns, factory, reader);
+        throw new NotImplementedException();
+    }
+
     public void Dispose()
     {
         connection.Dispose();
