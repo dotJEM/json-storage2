@@ -50,20 +50,31 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
             ("take", take),
             ("skip", skip));
 
-        ISqlServerDataReader<StorageObject<TJson>> read = await cmd
-            .ExecuteReaderAsync(
-                ["Id", "ContentType", "Version", "Created", "Updated", "CreatedBy", "UpdatedBy", "Data"],
-                values => new StorageObject<TJson>(
-                    (string)values[1],
-                    (Guid)values[0],
-                    (int)values[2],
-                    (DateTime)values[3],
-                    (DateTime)values[4],
-                    (string)values[5],
-                    (string)values[6],
-                    context.JsonConverter.Parse((string)values[7])
-                    ),
-                CancellationToken.None);
+        ISqlServerDataReader<StorageObject<TJson>> read = await cmd.ExecuteReaderAsync(row => new StorageObject<TJson>(
+            row.GetString("ContentType"),
+            row.GetGuid("Id"),
+            row.GetInt32("Version"),
+            row.GetDateTime("Created"),
+            row.GetDateTime("Updated"),
+            row.GetString("CreatedBy"),
+            row.GetString("UpdatedBy"),
+            context.JsonConverter.Parse(row.GetString("Data"))
+        ), CancellationToken.None);
+
+
+        //ISqlServerDataReader<StorageObject<TJson>> read = await cmd
+        //    .ExecuteReaderAsync(
+        //        ["Id", "ContentType", "Version", "Created", "Updated", "CreatedBy", "UpdatedBy", "Data"],
+        //        values => new StorageObject<TJson>(
+        //            (string)values[1],
+        //            (Guid)values[0],
+        //            (int)values[2],
+        //            (DateTime)values[3],
+        //            (DateTime)values[4],
+        //            (string)values[5],
+        //            (string)values[6],
+        //            context.JsonConverter.Parse((string)values[7])
+        //            ), CancellationToken.None);
 
         await foreach (StorageObject<TJson> obj in read)
             yield return obj;

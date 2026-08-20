@@ -182,6 +182,8 @@ public interface ISqlServerCommand : IDisposable
 {
     Task<T> ExecuteScalarAsync<T>(CancellationToken cancellationToken);
     Task<ISqlServerDataReader<T>> ExecuteReaderAsync<T>(string[] columns, Func<object[], T> factory, CancellationToken cancellationToken);
+
+   Task<ISqlServerDataReader<TOut>> ExecuteReaderAsync<TOut>(Func<ISqlServerRowAdapter, TOut> factory, CancellationToken cancellationToken);
 }
 
 public class SqlServerCommand : ISqlServerCommand
@@ -210,15 +212,14 @@ public class SqlServerCommand : ISqlServerCommand
     {
         await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
         SqlDataReader? reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-        return new SqlServerDataReader<T>(columns, factory, reader);
+        return new XSqlServerDataReader<T>(columns, factory, reader);
     }
 
-    public async Task<ISqlServerDataReader<T>> ExecuteReaderAsync<T, TTuple>(string[] columns, Func<TTuple[], T> factory, CancellationToken cancellationToken)
+    public async Task<ISqlServerDataReader<TOut>> ExecuteReaderAsync<TOut>(Func<ISqlServerRowAdapter, TOut> factory, CancellationToken cancellationToken)
     {
-        //await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-        //SqlDataReader? reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
-        //return new SqlServerDataReader<T>(columns, factory, reader);
-        throw new NotImplementedException();
+        await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+        SqlDataReader? reader = await command.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        return new SqlServerDataReader<TOut>(factory, reader);
     }
 
     public void Dispose()
@@ -256,13 +257,13 @@ public interface ISqlServerDataReader<out T> : IDisposable, IEnumerable<T>, IAsy
 {
 }
 
-public class SqlServerDataReader<T> : ISqlServerDataReader<T>
+public class XSqlServerDataReader<T> : ISqlServerDataReader<T>
 {
     private readonly string[] columns;
     private readonly Func<object[], T> factory;
     private readonly SqlDataReader reader;
 
-    public SqlServerDataReader(string[] columns, Func<object[], T> factory, SqlDataReader reader)
+    public XSqlServerDataReader(string[] columns, Func<object[], T> factory, SqlDataReader reader)
     {
         this.columns = columns;
         this.factory = factory;
@@ -284,6 +285,7 @@ public class SqlServerDataReader<T> : ISqlServerDataReader<T>
 
     public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken())
     {
+
         int[] c = columns.Select(name => reader.GetOrdinal(name)).ToArray();
         while (await reader.ReadAsync(cancellationToken))
         {
@@ -299,4 +301,156 @@ public class SqlServerDataReader<T> : ISqlServerDataReader<T>
     public void Dispose() => reader.Dispose();
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
+public class SqlServerDataReader<T> : ISqlServerDataReader<T>
+{
+    private readonly Func<ISqlServerRowAdapter, T> factory;
+    private readonly SqlDataReader reader;
+
+    public SqlServerDataReader(Func<ISqlServerRowAdapter, T> factory, SqlDataReader reader)
+    {
+        this.factory = factory;
+        this.reader = reader;
+    }
+
+    public IEnumerator<T> GetEnumerator()
+    {
+        SqlServerRowAdapter rowAdapter = new(reader);
+        while (reader.Read())
+        {
+            //TODO: Better way of handling column specs as this is surely horrible performance, but function first!.
+            yield return factory(rowAdapter);
+        }
+    }
+
+    public async IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = new CancellationToken())
+    {
+
+        SqlServerRowAdapter rowAdapter = new(reader);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            //TODO: Better way of handling column specs as this is surely horrible performance, but function first!.
+            yield return factory(rowAdapter);
+        }
+    }
+
+    /// <inheritdoc />
+    public void Dispose() => reader.Dispose();
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
+public interface ISqlServerRowAdapter
+{
+    string GetString(string column);
+    bool GetBoolean(string column);
+    byte GetByte(string column);
+    DateTime GetDateTime(string column);
+    DateTimeOffset GetDateTimeOffset(string column);
+    decimal GetDecimal(string column);
+    double GetDouble(string column);
+    float GetFloat(string column);
+    Guid GetGuid(string column);
+    short GetInt16(string column);
+    int GetInt32(string column);
+    long GetInt64(string column);
+    Stream GetStream(string column);
+}
+
+public class SqlServerRowAdapter(SqlDataReader reader) : ISqlServerRowAdapter
+{
+    private readonly Dictionary<string, int> columns = new();
+
+    public string GetString(string column)
+    {
+        if(!columns.TryGetValue(column, out int ordinal))
+            columns.Add(column, ordinal = reader.GetOrdinal(column));
+        return reader.GetString(ordinal);
+    }
+
+    public bool GetBoolean(string column)
+    {
+        if (!columns.TryGetValue(column, out int ordinal))
+            columns.Add(column, ordinal = reader.GetOrdinal(column));
+        return reader.GetBoolean(ordinal);
+    }
+
+    public byte GetByte(string column)
+    {
+        if (!columns.TryGetValue(column, out int ordinal))
+            columns.Add(column, ordinal = reader.GetOrdinal(column));
+        return reader.GetByte(ordinal);
+    }
+
+    public DateTime GetDateTime(string column)
+    {
+        if (!columns.TryGetValue(column, out int ordinal))
+            columns.Add(column, ordinal = reader.GetOrdinal(column));
+        return reader.GetDateTime(ordinal);
+    }
+
+    public DateTimeOffset GetDateTimeOffset(string column)
+    {
+        if (!columns.TryGetValue(column, out int ordinal))
+            columns.Add(column, ordinal = reader.GetOrdinal(column));
+        return reader.GetDateTimeOffset(ordinal);
+    }
+
+    public decimal GetDecimal(string column)
+    {
+        if (!columns.TryGetValue(column, out int ordinal))
+            columns.Add(column, ordinal = reader.GetOrdinal(column));
+        return reader.GetDecimal(ordinal);
+    }
+
+    public double GetDouble(string column)
+    {
+        if (!columns.TryGetValue(column, out int ordinal))
+            columns.Add(column, ordinal = reader.GetOrdinal(column));
+        return reader.GetDouble(ordinal);
+    }
+
+    public float GetFloat(string column)
+    {
+        if (!columns.TryGetValue(column, out int ordinal))
+            columns.Add(column, ordinal = reader.GetOrdinal(column));
+        return reader.GetFloat(ordinal);
+    }
+
+    public Guid GetGuid(string column)
+    {
+        if (!columns.TryGetValue(column, out int ordinal))
+            columns.Add(column, ordinal = reader.GetOrdinal(column));
+        return reader.GetGuid(ordinal);
+    }
+
+    public short GetInt16(string column)
+    {
+        if (!columns.TryGetValue(column, out int ordinal))
+            columns.Add(column, ordinal = reader.GetOrdinal(column));
+        return reader.GetInt16(ordinal);
+    }
+
+    public int GetInt32(string column)
+    {
+        if (!columns.TryGetValue(column, out int ordinal))
+            columns.Add(column, ordinal = reader.GetOrdinal(column));
+        return reader.GetInt32(ordinal);
+    }
+
+    public long GetInt64(string column)
+    {
+        if (!columns.TryGetValue(column, out int ordinal))
+            columns.Add(column, ordinal = reader.GetOrdinal(column));
+        return reader.GetInt64(ordinal);
+    }
+
+    public Stream GetStream(string column)
+    {
+        if (!columns.TryGetValue(column, out int ordinal))
+            columns.Add(column, ordinal = reader.GetOrdinal(column));
+        return reader.GetStream(ordinal);
+    }
+
 }
