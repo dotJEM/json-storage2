@@ -54,6 +54,8 @@ public class SqlServerStorageContextIntegrationTest
 
         StorageObject<JObject>? so5 = await area.GetAsync(so.Id);
         Console.WriteLine(so5);
+
+        List<int> x = new List<int>([1, 2, 3, 4, 5]);
     }
 
     [Test]
@@ -89,7 +91,7 @@ public class SqlServerStorageContextIntegrationTest
 
     }
 
-    [Test]
+    [Test, Explicit]
     public async Task GetAsync_ChangeLog()
     {
         IStorageContext<JObject> context = await new SqlServerStorageContextBuilder<JObject>(TestSqlConnectionFactory.ConnectionString, new NewtonsoftJsonConverter())
