@@ -38,9 +38,9 @@
   </ItemGroup>
 
   <ItemGroup>
-		<PackageReference Include="Dapper" Version="2.1.35" />
+		<PackageReference Include="Dapper" Version="2.1.89" />
 		<PackageReference Include="DotJEM.SourceGen.TemplateGenerator" Version="0.1.13-beta001" PrivateAssets="all" />
-		<PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
+		<PackageReference Include="System.Data.SqlClient" Version="4.9.1" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -1,4 +1,8 @@
-﻿using DotJEM.Json.Storage2.SqlServer.Initialization;
+﻿using System.Collections;
+using System.Collections.Concurrent;
+using System.Collections.Immutable;
+using System.IO.Pipes;
+using DotJEM.Json.Storage2.SqlServer.Initialization;
 
 namespace DotJEM.Json.Storage2.SqlServer;
 
@@ -68,8 +72,6 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
         await foreach (StorageObject<TJson> obj in read)
             yield return obj;
     }
-
-
 
     public Task<StorageObject<TJson>?> GetAsync(Guid id)
         => GetAsync(id, CancellationToken.None);
@@ -219,13 +221,13 @@ public class SqlServerStorageAreaLog<TJson>(SqlServerStorageContext<TJson> conte
         return await cmd.ExecuteScalarAsync<long>(CancellationToken.None);
     }
 
-    public Task<IStorageAreaChangeCollection<TJson>> Get(int count = 5000, bool includeDeletes = true)
+    public Task<IChangeCollection<TJson>> Get(int count = 5000, bool includeDeletes = true)
         => Get(CurrentGeneration, count, includeDeletes);
 
-    public async Task<IStorageAreaChangeCollection<TJson>> Get(long generation, int count = 5000, bool includeDeletes = true)
+    public async Task<IChangeCollection<TJson>> Get(long generation, int count = 5000, bool includeDeletes = true)
     {
         if (!stateManager.Exists)
-            return new StorageAreaChangeCollection<TJson>([]);
+            return new ChangeCollection<TJson>([]);
 
         using ISqlServerCommand cmd = context.CommandFactory.Create(
             SqlTemplates.SelectFromChangeLogTable_Paged(stateManager.Schema, stateManager.AreaName),
@@ -250,9 +252,8 @@ public class SqlServerStorageAreaLog<TJson>(SqlServerStorageContext<TJson> conte
         await foreach (StorageChange<TJson> obj in read)
             changes.Add(obj);
 
-        this.CurrentGeneration = changes.Last().Revision;
-
-        return new StorageAreaChangeCollection<TJson>(changes);
+        CurrentGeneration = changes.Last().Revision;
+        return new ChangeCollection<TJson>([.. changes]);
     }
 
     public IStorageAreaLogObserver<TJson> OpenOberver()
@@ -261,7 +262,37 @@ public class SqlServerStorageAreaLog<TJson>(SqlServerStorageContext<TJson> conte
     }
 }
 
-public class StorageAreaChangeCollection<TJson>(List<StorageChange<TJson>> changes) : IStorageAreaChangeCollection<TJson>
+public readonly record struct ChangeCollection<TJson> : IChangeCollection<TJson>
 {
+    private readonly IImmutableList<StorageChange<TJson>> changes;
 
+    public ChangeCollection(IImmutableList<StorageChange<TJson>> changes)
+    {
+        this.changes = changes;
+    }
+
+
+
+    public IEnumerator<StorageChange<TJson>> GetEnumerator() => changes.GetEnumerator();
+    
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+}
+
+public class StorageAreaLogObserver<TJson> : IStorageAreaLogObserver<TJson>
+{
+    private readonly ConcurrentDictionary<Guid, IObserver<IChangeCollection<TJson>>> observers = new();
+
+    public IDisposable Subscribe(IObserver<IChangeCollection<TJson>> observer)
+    {
+        Guid id = Guid.NewGuid();
+        observers.TryAdd(id, observer);
+        return new Subscription(observers, id);
+    }
+
+
+
+    private readonly struct Subscription(ConcurrentDictionary<Guid, IObserver<IChangeCollection<TJson>>> bag, Guid id) : IDisposable
+    {
+        public void Dispose() => bag.TryRemove(id, out _);
+    }
 }

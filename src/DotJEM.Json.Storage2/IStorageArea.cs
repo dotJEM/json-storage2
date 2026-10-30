@@ -52,7 +52,7 @@ public readonly record struct ChangeCount(int Created, int Updated, int Deleted)
     }
 }
 
-public interface IStorageAreaChangeCollection<TJson>
+public interface IChangeCollection<TJson> : IEnumerable<StorageChange<TJson>>
 {
 
 }
@@ -77,7 +77,7 @@ public interface IStorageAreaLog<TJson>
     /// </remarks>
     /// <param name="includeDeletes">If <code>true</code>, returns all types of changes; If <code>false</code>, it skips deletes.</param>
     /// <param name="count">The maximum number of changes to return.</param>
-    Task<IStorageAreaChangeCollection<TJson>> Get(int count = 5000, bool includeDeletes = true);
+    Task<IChangeCollection<TJson>> Get(int count = 5000, bool includeDeletes = true);
 
     /// <summary>
     /// Gets a batch of changes from the provided <see cref="generation"/>.
@@ -92,13 +92,13 @@ public interface IStorageAreaLog<TJson>
     /// <param name="includeDeletes">If <code>true</code>, returns all types of changes; If <code>false</code>, it skips deletes.</param>
     /// <param name="count">The maximum number of changes to return.</param>
     /// <returns></returns>
-    Task<IStorageAreaChangeCollection<TJson>> Get(long generation, int count = 5000, bool includeDeletes = true);
+    Task<IChangeCollection<TJson>> Get(long generation, int count = 5000, bool includeDeletes = true);
 
     IStorageAreaLogObserver<TJson> OpenOberver();
 
 }
 
-public interface IStorageAreaLogObserver<TJson>
+public interface IStorageAreaLogObserver<TJson> : IObservable<IChangeCollection<TJson>>
 {
 
 }
