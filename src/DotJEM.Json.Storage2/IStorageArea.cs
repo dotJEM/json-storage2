@@ -94,7 +94,7 @@ public interface IStorageAreaLog<TJson>
     /// <returns></returns>
     Task<IChangeCollection<TJson>> Get(long generation, int count = 5000, bool includeDeletes = true);
 
-    IStorageAreaLogObserver<TJson> OpenOberver();
+    IStorageAreaLogObserver<TJson> OpenOberver(long generation = 0, int batchSize = 5000);
 
 }
 
