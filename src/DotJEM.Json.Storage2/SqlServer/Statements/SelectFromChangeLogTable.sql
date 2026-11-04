@@ -1,18 +1,25 @@
 ﻿--start:paged
-SELECT TOP (@count) [Revision]
-        ,[Id]
-        ,[Event]
-        ,[Time]
-        ,[User]
-        ,[Version]
-        ,[Data]
+SELECT TOP (@count) 
+        logTable.[Revision]
+       ,logTable.[Event]
+       ,dataTable.[Id]
+       ,dataTable.[Created]
+       ,dataTable.[Updated]
+       ,dataTable.[Version]
+       ,dataTable.[ContentType]
+       ,dataTable.[Created]
+       ,dataTable.[Updated]
+       ,dataTable.[CreatedBy]
+       ,dataTable.[UpdatedBy]
+       ,dataTable.[Data]
 FROM (
     SELECT MAX([Revision]) as Latest
     FROM [@{schema}].[@{area_name}.log]
     WHERE [Revision] > @start
     GROUP BY [Id]
     ) temp
-    JOIN [@{schema}].[@{area_name}.log] cl ON cl.Revision = temp.Latest
+    JOIN [@{schema}].[@{area_name}.log] logTable ON logTable.Revision = temp.Latest
+    JOIN [@{schema}].[@{area_name}.data] dataTable on logTable.Id = dataTable.Id
 ORDER BY [Revision]
 --end:paged
 

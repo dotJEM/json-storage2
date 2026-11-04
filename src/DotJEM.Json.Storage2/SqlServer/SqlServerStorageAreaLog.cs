@@ -34,19 +34,20 @@ public class SqlServerStorageAreaLog<TJson>(
             ("count", count),
             ("start", generation));
 
-        ISqlServerDataReader<StorageChange<TJson>> read = await cmd
-            .ExecuteReaderAsync(
-                ["Revision", "Id", "Event", "Time", "User", "Version", "Data"],
-                values => new StorageChange<TJson>(
-                    (long)values[0],
-                    (Guid)values[1],
-                    ((string)values[2])[0],
-                    (int)values[5],
-                    (DateTime)values[3],
-                    (string)values[4],
-                    context.JsonConverter.Parse((string)values[6])
-                ),
-                CancellationToken.None);
+        ISqlServerDataReader<StorageChange<TJson>> read = await cmd.ExecuteReaderAsync(row => new StorageChange<TJson>(
+            row.GetInt64("Revision"),
+            row.GetString("Event")[0],
+            new StorageObject<TJson>(
+                row.GetString("ContentType"),
+                row.GetGuid("Id"),
+                row.GetInt32("Version"),
+                row.GetDateTime("Created"),
+                row.GetDateTime("Updated"),
+                row.GetString("CreatedBy"),
+                row.GetString("UpdatedBy"),
+                context.JsonConverter.Parse(row.GetString("Data"))
+                )
+        ), CancellationToken.None);
 
         List<StorageChange<TJson>> changes = new(count);
         await foreach (StorageChange<TJson> obj in read)
@@ -78,45 +79,11 @@ public readonly record struct ChangeCollection<TJson> : IChangeCollection<TJson>
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
+
 public class StorageAreaLogObserver<TJson>(SqlServerStorageAreaLog<TJson> log, long generation = 0, int batchSize = 5000) : IStorageAreaLogObserver<TJson>
 {
-    private bool isNotifying = false;
-    private readonly ConcurrentDictionary<Guid, Subscription> observers = new();
-
     public IDisposable Subscribe(IObserver<IChangeCollection<TJson>> observer)
     {
-        Subscription subscription = new( observer, Unsubscribe);
-        observers.TryAdd(subscription.Id, subscription);
-        NotifyObservers();
-        return subscription;
-    }
-
-
-    private void Unsubscribe(Guid id)
-    {
-        observers.TryRemove(id, out _);
-    }
-
-    private async Task NotifyObservers()
-    {
-        foreach (Subscription subscription in observers.Values)
-        {
-            
-        }
-    }
-
-    private class Subscription : IDisposable
-    {
-        public Guid Id { get; } = Guid.NewGuid();
-        private readonly IObserver<IChangeCollection<TJson>> observer;
-        private readonly Action<Guid> unsubscribe;
-
-        public Subscription(IObserver<IChangeCollection<TJson>> observer, Action<Guid> unsubscribe)
-        {
-            this.observer = observer;
-            this.unsubscribe = unsubscribe;
-        }
-
-        public void Dispose() => unsubscribe(Id);
+        throw new NotImplementedException();
     }
 }

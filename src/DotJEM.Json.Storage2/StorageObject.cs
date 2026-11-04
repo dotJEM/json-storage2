@@ -1,13 +1,11 @@
 ﻿namespace DotJEM.Json.Storage2;
 
 
-//TODO: (jmd 2026-10-30) Should probably obtain the StorageObject.
 /// <summary/>
-public readonly record struct StorageChange<TJson>(long Revision, Guid Id, char Event, int Version, DateTime Time, string User, TJson Data);
+public record StorageChange<TJson>(long Revision, char Event, StorageObject<TJson> Object);
 
 /// <summary/>
-public readonly record struct StorageObject<TJson>(string ContentType, Guid Id, int Version, DateTime Created, DateTime Updated, string CreatedBy,
-    string UpdatedBy, TJson Data)
+public record StorageObject<TJson>(string ContentType, Guid Id, int Version, DateTime Created, DateTime Updated, string CreatedBy, string UpdatedBy, TJson Data)
 {
     /// <summary/>
     public override string ToString()
@@ -47,7 +45,7 @@ public readonly record struct StorageObject<TJson>(string ContentType, Guid Id, 
 /// <param name="Data"></param>
 /// <param name="Updated"></param>
 /// <param name="UpdatedBy"></param>
-public readonly record struct UpdateStorageObject<TJson>(string ContentType, Guid Id, TJson Data, DateTime? Updated = null, string? UpdatedBy = null);
+public record UpdateStorageObject<TJson>(string ContentType, Guid Id, TJson Data, DateTime? Updated = null, string? UpdatedBy = null);
 
 /// <summary>
 /// 
@@ -56,7 +54,7 @@ public readonly record struct UpdateStorageObject<TJson>(string ContentType, Gui
 /// <param name="Data"></param>
 /// <param name="Created"></param>
 /// <param name="CreatedBy"></param>
-public readonly record struct InsertStorageObject<TJson>(string ContentType, TJson Data, DateTime? Created = null, string? CreatedBy = null);
+public record InsertStorageObject<TJson>(string ContentType, TJson Data, DateTime? Created = null, string? CreatedBy = null);
 
 /// <summary>
 /// 
@@ -66,4 +64,4 @@ public readonly record struct InsertStorageObject<TJson>(string ContentType, TJs
 /// <param name="Data"></param>
 /// <param name="Updated"></param>
 /// <param name="UpdatedBy"></param>
-public readonly record struct DeleteStorageObject(string ContentType, Guid Id, DateTime? Updated = null, string? UpdatedBy = null);
+public record DeleteStorageObject(string ContentType, Guid Id, DateTime? Updated = null, string? UpdatedBy = null);
