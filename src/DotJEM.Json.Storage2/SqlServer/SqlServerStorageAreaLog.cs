@@ -45,7 +45,7 @@ public class SqlServerStorageAreaLog<TJson>(
                 row.GetDateTime("Updated"),
                 row.GetString("CreatedBy"),
                 row.GetString("UpdatedBy"),
-                context.JsonConverter.Parse(row.GetString("Data"))
+                context.JsonConverter.Parse(row.GetString("Data")                )
                 )
         ), CancellationToken.None);
 
@@ -82,8 +82,84 @@ public readonly record struct ChangeCollection<TJson> : IChangeCollection<TJson>
 
 public class StorageAreaLogObserver<TJson>(SqlServerStorageAreaLog<TJson> log, long generation = 0, int batchSize = 5000) : IStorageAreaLogObserver<TJson>
 {
+    private bool isNotifying = false;
+    private Task runner;
+    private readonly object padLock = new { };
+    private readonly ConcurrentDictionary<Guid, Subscription> observers = new();
+
     public IDisposable Subscribe(IObserver<IChangeCollection<TJson>> observer)
     {
-        throw new NotImplementedException();
+        Subscription subscription = new(observer, Unsubscribe);
+        observers.TryAdd(subscription.Id, subscription);
+
+        //TODO: Move to running a single loop?.
+        NotifyObservers();
+        return subscription;
+    }
+
+
+    private void Unsubscribe(Guid id)
+    {
+        observers.TryRemove(id, out _);
+    }
+
+    private void Unsubscribe(Subscription subscription)
+    {
+        observers.TryRemove(subscription.Id, out _);
+    }
+
+    private void NotifyObservers()
+    {
+        if (isNotifying)
+            return;
+
+        lock (padLock)
+        {
+            if (isNotifying)
+                return;
+
+            runner = Task.Run(Execute);
+            isNotifying = true;
+        }
+
+        async Task Execute()
+        {
+            while (!observers.IsEmpty)
+            {
+
+            }
+
+            isNotifying = false;
+        }
+    }
+
+    private sealed class Subscription(
+        StorageAreaLogObserver<TJson> owner,
+        IObserver<IChangeCollection<TJson>> observer,
+        long generation) : IDisposable
+    {
+        public Guid Id { get; } = Guid.NewGuid();
+        public long Generation { get; private set; } = generation;
+        public bool Disposed;
+        public void Notify(IChangeCollection<TJson> batch, long last)
+        {
+            if (Disposed) return;
+            Generation = last;
+            try { observer.OnNext(batch); }
+            catch (Exception ex) { Fail(ex); }
+        }
+
+        public void Fail(Exception ex)
+        {
+            if (Disposed) return;
+            observer.OnError(ex);
+            Dispose();
+        }
+
+        public void Dispose()
+        {
+            owner.Unsubscribe(this);
+            Disposed = true;
+        }
     }
 }
