@@ -45,7 +45,7 @@ public class SqlServerStorageAreaLog<TJson>(
                 row.GetDateTime("Updated"),
                 row.GetString("CreatedBy"),
                 row.GetString("UpdatedBy"),
-                context.JsonConverter.Parse(row.GetString("Data")                )
+                context.JsonConverter.Parse(row.GetString("Data"))
                 )
         ), CancellationToken.None);
 
@@ -53,6 +53,8 @@ public class SqlServerStorageAreaLog<TJson>(
         await foreach (StorageChange<TJson> obj in read)
             changes.Add(obj);
 
+        if (changes.Count == 0)
+            return new ChangeCollection<TJson>([]);
 
         CurrentGeneration = changes.Last().Revision;
         return new ChangeCollection<TJson>([.. changes]);
@@ -84,12 +86,14 @@ public class StorageAreaLogObserver<TJson>(SqlServerStorageAreaLog<TJson> log, l
 {
     private bool isNotifying = false;
     private Task runner;
-    private readonly object padLock = new { };
+    private readonly object padlock = new { };
+    private CancellationTokenSource cts;
     private readonly ConcurrentDictionary<Guid, Subscription> observers = new();
 
     public IDisposable Subscribe(IObserver<IChangeCollection<TJson>> observer)
     {
-        Subscription subscription = new(observer, Unsubscribe);
+        if (observer == null) throw new ArgumentNullException(nameof(observer));
+        Subscription subscription = new(this, observer, generation);
         observers.TryAdd(subscription.Id, subscription);
 
         //TODO: Move to running a single loop?.
@@ -97,40 +101,128 @@ public class StorageAreaLogObserver<TJson>(SqlServerStorageAreaLog<TJson> log, l
         return subscription;
     }
 
-
-    private void Unsubscribe(Guid id)
-    {
-        observers.TryRemove(id, out _);
-    }
-
-    private void Unsubscribe(Subscription subscription)
-    {
-        observers.TryRemove(subscription.Id, out _);
-    }
-
     private void NotifyObservers()
     {
         if (isNotifying)
             return;
 
-        lock (padLock)
+        lock (padlock)
         {
             if (isNotifying)
                 return;
 
-            runner = Task.Run(Execute);
+            cts = new CancellationTokenSource();
+            runner = Task.Run(() => Execute(cts.Token));
             isNotifying = true;
         }
+    }
 
-        async Task Execute()
+    private async Task Execute(CancellationToken token)
+    {
+        while (!observers.IsEmpty && !token.IsCancellationRequested)
         {
-            while (!observers.IsEmpty)
+            try
             {
-
+                await Poll();
+                await Task.Delay(2000, token);
             }
-
-            isNotifying = false;
+            catch (OperationCanceledException) when (cts?.IsCancellationRequested == true)
+            {
+                isNotifying = false;
+                return;
+            }
         }
+        isNotifying = false;
+    }
+
+    private async Task Poll()
+    {
+        foreach (Subscription subscription in observers.Values.OrderBy(sub => sub.Generation))
+        {
+
+        }
+    }
+
+    //private async Task RunAsync(CancellationToken token, SemaphoreSlim signal)
+    //{
+    //    while (!token.IsCancellationRequested)
+    //    {
+    //        try
+    //        {
+    //            if (!await PollAsync())
+    //                await signal.WaitAsync(interval, token);
+    //        }
+    //        catch (OperationCanceledException) when (token.IsCancellationRequested)
+    //        {
+    //            return;
+    //        }
+    //        catch (Exception ex)
+    //        {
+    //            Subscription[] failed;
+    //            lock (padlock)
+    //            {
+    //                failed = subscriptions.ToArray();
+    //                subscriptions.Clear();
+    //                cts?.Cancel();
+    //                cts = null;
+    //            }
+    //            foreach (Subscription s in failed)
+    //                s.Fail(ex);
+    //            return;
+    //        }
+    //    }
+    //}
+    private async Task<bool> PollAsync()
+    {
+        foreach (Subscription subscription in observers.Values.OrderBy(sub => sub.Generation))
+        {
+
+        }
+
+        bool more = false;
+        foreach (IGrouping<long, Subscription> group in observers.Values.OrderBy(s => s.Generation).GroupBy(s => s.Generation))
+        {
+            IChangeCollection<TJson> changes = await log.Get(group.Key, batchSize);
+            StorageChange<TJson>[] items = changes.ToArray();
+            if (items.Length == 0)
+                continue;
+
+            long last = items[^1].Revision;
+            more |= items.Length >= batchSize;
+            foreach (Subscription subscription in group)
+                subscription.Notify(changes, last);
+        }
+        return more;
+    }
+    //public IDisposable jSubscribe(IObserver<IChangeCollection<TJson>> observer)
+    //{
+    //    ArgumentNullException.ThrowIfNull(observer);
+    //    Subscription subscription = new(this, observer, generation);
+    //    observers.TryAdd(subscription.Id, subscription);
+    //    NotifyObservers();
+
+    //    SemaphoreSlim signal;
+    //    lock (padlock)
+    //    {
+    //        if (cts is null)
+    //        {
+    //            cts = new CancellationTokenSource();
+    //            wake = new SemaphoreSlim(0);
+    //            CancellationToken token = cts.Token;
+    //            SemaphoreSlim started = wake;
+    //            _ = Task.Run(() => RunAsync(token, started));
+    //        }
+    //        signal = wake!;
+    //    }
+    //    signal.Release();
+    //    return subscription;
+    //}
+
+    private void Unsubscribe(Subscription subscription)
+    {
+        observers.TryRemove(subscription.Id, out _);
+        if (observers.IsEmpty)
+            cts?.Cancel();
     }
 
     private sealed class Subscription(
