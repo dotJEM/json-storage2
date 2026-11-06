@@ -54,7 +54,10 @@ public readonly record struct ChangeCount(int Created, int Updated, int Deleted)
 
 public interface IChangeCollection<TJson> : IEnumerable<StorageChange<TJson>>
 {
-
+    int Count { get; }
+    long LatestRevision { get; }
+    StorageChange<TJson> this[int index] { get; }
+    StorageChange<TJson>[] ToArray();
 }
 
 public interface IStorageAreaLog<TJson>

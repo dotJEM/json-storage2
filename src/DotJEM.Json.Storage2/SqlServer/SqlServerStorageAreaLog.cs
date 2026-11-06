@@ -66,15 +66,21 @@ public class SqlServerStorageAreaLog<TJson>(
     }
 }
 
-public readonly record struct ChangeCollection<TJson> : IChangeCollection<TJson>
+public record ChangeCollection<TJson> : IChangeCollection<TJson>
 {
     private readonly IImmutableList<StorageChange<TJson>> changes;
 
+    public int Count => changes.Count;
+
+    public long LatestRevision => changes[^1].Revision;
+
+    public StorageChange<TJson> this[int index] => changes[index];
     public ChangeCollection(IImmutableList<StorageChange<TJson>> changes)
     {
         this.changes = changes;
     }
 
+    public StorageChange<TJson>[] ToArray() => changes.ToArray();
 
     public IEnumerator<StorageChange<TJson>> GetEnumerator() => changes.GetEnumerator();
 
@@ -88,13 +94,15 @@ public class StorageAreaLogObserver<TJson>(SqlServerStorageAreaLog<TJson> log, l
     private Task runner;
     private readonly object padlock = new { };
     private CancellationTokenSource cts;
+    private long CurrentGeneration = generation;
     private readonly ConcurrentDictionary<Guid, Subscription> observers = new();
+    private readonly ConcurrentDictionary<Guid, Subscription> incomming = new();
 
     public IDisposable Subscribe(IObserver<IChangeCollection<TJson>> observer)
     {
         if (observer == null) throw new ArgumentNullException(nameof(observer));
         Subscription subscription = new(this, observer, generation);
-        observers.TryAdd(subscription.Id, subscription);
+        incomming.TryAdd(subscription.Id, subscription);
 
         //TODO: Move to running a single loop?.
         NotifyObservers();
@@ -137,9 +145,37 @@ public class StorageAreaLogObserver<TJson>(SqlServerStorageAreaLog<TJson> log, l
 
     private async Task Poll()
     {
-        foreach (Subscription subscription in observers.Values.OrderBy(sub => sub.Generation))
+        while (!incomming.IsEmpty)
         {
+            // TODO: Optimize this, it still has a bunch of optimizations that can be done.
+            //       Primarily when we add multiple subscriptions shortly after each other they might only
+            //       be slightly missaligned causing us to fetch the same changes multiple times.
+            foreach (Subscription subscription in incomming.Values)
+            {
+                if (subscription.Generation >= CurrentGeneration)
+                {
+                    incomming.TryRemove(subscription.Id, out _);
+                    observers.TryAdd(subscription.Id, subscription);
+                    continue;
+                }
 
+                long maxBatchSize = Math.Max(batchSize, (subscription.Generation - CurrentGeneration));
+                IChangeCollection<TJson> changes = await log.Get(subscription.Generation, (int)maxBatchSize);
+                subscription.Notify(changes);
+                CurrentGeneration = changes.LatestRevision;
+            }
+        }
+
+        while (true)
+        {
+            IChangeCollection<TJson> changes = await log.Get(CurrentGeneration, batchSize);
+            if(changes.Count == 0)
+                break;
+
+            foreach (Subscription subscription in observers.Values.OrderBy(sub => sub.Generation))
+                subscription.Notify(changes);
+
+            CurrentGeneration = changes.LatestRevision;
         }
     }
 
@@ -174,6 +210,8 @@ public class StorageAreaLogObserver<TJson>(SqlServerStorageAreaLog<TJson> log, l
     //}
     private async Task<bool> PollAsync()
     {
+
+
         foreach (Subscription subscription in observers.Values.OrderBy(sub => sub.Generation))
         {
 
@@ -190,7 +228,7 @@ public class StorageAreaLogObserver<TJson>(SqlServerStorageAreaLog<TJson> log, l
             long last = items[^1].Revision;
             more |= items.Length >= batchSize;
             foreach (Subscription subscription in group)
-                subscription.Notify(changes, last);
+                subscription.Notify(changes);
         }
         return more;
     }
@@ -233,10 +271,10 @@ public class StorageAreaLogObserver<TJson>(SqlServerStorageAreaLog<TJson> log, l
         public Guid Id { get; } = Guid.NewGuid();
         public long Generation { get; private set; } = generation;
         public bool Disposed;
-        public void Notify(IChangeCollection<TJson> batch, long last)
+        public void Notify(IChangeCollection<TJson> batch)
         {
             if (Disposed) return;
-            Generation = last;
+            Generation = batch.LatestRevision;
             try { observer.OnNext(batch); }
             catch (Exception ex) { Fail(ex); }
         }
