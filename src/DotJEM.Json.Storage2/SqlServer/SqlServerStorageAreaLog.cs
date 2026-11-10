@@ -60,7 +60,11 @@ public class SqlServerStorageAreaLog<TJson>(
         return new ChangeCollection<TJson>([.. changes]);
     }
 
-    public IStorageAreaLogObserver<TJson> OpenOberver(long generation = 0, int batchSize = 5000)
+    public IStorageAreaLogObserver<TJson> OpenOberver(int batchSize = 5000)
+        => OpenOberver(CurrentGeneration, batchSize);
+
+
+    public IStorageAreaLogObserver<TJson> OpenOberver(long generation, int batchSize = 5000)
     {
         return new StorageAreaLogObserver<TJson>(this, generation, batchSize);
     }
