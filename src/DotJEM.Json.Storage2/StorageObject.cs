@@ -1,8 +1,13 @@
 ﻿namespace DotJEM.Json.Storage2;
 
-
+public enum StorageEvent
+{
+    Created = 'C',
+    Updated = 'U',
+    Deleted = 'D'
+}
 /// <summary/>
-public record StorageChange<TJson>(long Revision, char Event, StorageObject<TJson> Object);
+public record StorageChange<TJson>(long Revision, StorageEvent Event, StorageObject<TJson> Object);
 
 /// <summary/>
 public record StorageObject<TJson>(string ContentType, Guid Id, int Version, DateTime Created, DateTime Updated, string CreatedBy, string UpdatedBy, TJson Data)

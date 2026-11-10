@@ -36,7 +36,7 @@ public class SqlServerStorageAreaLog<TJson>(
 
         ISqlServerDataReader<StorageChange<TJson>> read = await cmd.ExecuteReaderAsync(row => new StorageChange<TJson>(
             row.GetInt64("Revision"),
-            row.GetString("Event")[0],
+            (StorageEvent)row.GetString("Event")[0],
             new StorageObject<TJson>(
                 row.GetString("ContentType"),
                 row.GetGuid("Id"),
@@ -60,11 +60,11 @@ public class SqlServerStorageAreaLog<TJson>(
         return new ChangeCollection<TJson>([.. changes]);
     }
 
-    public IStorageAreaLogObserver<TJson> OpenOberver(int batchSize = 5000)
-        => OpenOberver(CurrentGeneration, batchSize);
+    public IStorageAreaLogObserver<TJson> OpenObserver(int batchSize = 5000)
+        => OpenObserver(CurrentGeneration, batchSize);
 
 
-    public IStorageAreaLogObserver<TJson> OpenOberver(long generation, int batchSize = 5000)
+    public IStorageAreaLogObserver<TJson> OpenObserver(long generation, int batchSize = 5000)
     {
         return new StorageAreaLogObserver<TJson>(this, generation, batchSize);
     }
@@ -182,83 +182,6 @@ public class StorageAreaLogObserver<TJson>(SqlServerStorageAreaLog<TJson> log, l
             CurrentGeneration = changes.LatestRevision;
         }
     }
-
-    //private async Task RunAsync(CancellationToken token, SemaphoreSlim signal)
-    //{
-    //    while (!token.IsCancellationRequested)
-    //    {
-    //        try
-    //        {
-    //            if (!await PollAsync())
-    //                await signal.WaitAsync(interval, token);
-    //        }
-    //        catch (OperationCanceledException) when (token.IsCancellationRequested)
-    //        {
-    //            return;
-    //        }
-    //        catch (Exception ex)
-    //        {
-    //            Subscription[] failed;
-    //            lock (padlock)
-    //            {
-    //                failed = subscriptions.ToArray();
-    //                subscriptions.Clear();
-    //                cts?.Cancel();
-    //                cts = null;
-    //            }
-    //            foreach (Subscription s in failed)
-    //                s.Fail(ex);
-    //            return;
-    //        }
-    //    }
-    //}
-    private async Task<bool> PollAsync()
-    {
-
-
-        foreach (Subscription subscription in observers.Values.OrderBy(sub => sub.Generation))
-        {
-
-        }
-
-        bool more = false;
-        foreach (IGrouping<long, Subscription> group in observers.Values.OrderBy(s => s.Generation).GroupBy(s => s.Generation))
-        {
-            IChangeCollection<TJson> changes = await log.Get(group.Key, batchSize);
-            StorageChange<TJson>[] items = changes.ToArray();
-            if (items.Length == 0)
-                continue;
-
-            long last = items[^1].Revision;
-            more |= items.Length >= batchSize;
-            foreach (Subscription subscription in group)
-                subscription.Notify(changes);
-        }
-        return more;
-    }
-    //public IDisposable jSubscribe(IObserver<IChangeCollection<TJson>> observer)
-    //{
-    //    ArgumentNullException.ThrowIfNull(observer);
-    //    Subscription subscription = new(this, observer, generation);
-    //    observers.TryAdd(subscription.Id, subscription);
-    //    NotifyObservers();
-
-    //    SemaphoreSlim signal;
-    //    lock (padlock)
-    //    {
-    //        if (cts is null)
-    //        {
-    //            cts = new CancellationTokenSource();
-    //            wake = new SemaphoreSlim(0);
-    //            CancellationToken token = cts.Token;
-    //            SemaphoreSlim started = wake;
-    //            _ = Task.Run(() => RunAsync(token, started));
-    //        }
-    //        signal = wake!;
-    //    }
-    //    signal.Release();
-    //    return subscription;
-    //}
 
     private void Unsubscribe(Subscription subscription)
     {
