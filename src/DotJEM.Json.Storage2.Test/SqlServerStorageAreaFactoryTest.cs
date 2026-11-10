@@ -144,7 +144,7 @@ public class SqlServerStorageContextIntegrationTest
         long lastGen = 0;
         for (int i = 0; i < 10; i++)
         {
-            IStorageAreaChangeCollection<JObject> changes = await area.Log.Get(100);
+            IChangeCollection<JObject> changes = await area.Log.Get(100);
             lastGen += 100;
             Assert.That(area.Log.CurrentGeneration, Is.GreaterThanOrEqualTo(lastGen));
             lastGen = area.Log.CurrentGeneration;
