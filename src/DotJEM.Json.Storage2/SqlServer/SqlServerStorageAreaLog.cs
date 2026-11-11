@@ -95,6 +95,7 @@ public record ChangeCollection<TJson> : IChangeCollection<TJson>
 public class StorageAreaLogObserver<TJson>(SqlServerStorageAreaLog<TJson> log, long generation = 0, int batchSize = 5000) : IStorageAreaLogObserver<TJson>
 {
     private bool isNotifying = false;
+    private readonly Guid Id = Guid.NewGuid();
     private Task runner;
     private readonly object padlock = new { };
     private CancellationTokenSource cts;
@@ -122,17 +123,23 @@ public class StorageAreaLogObserver<TJson>(SqlServerStorageAreaLog<TJson> log, l
         {
             if (isNotifying)
                 return;
+            isNotifying = true;
 
             cts = new CancellationTokenSource();
             runner = Task.Run(() => Execute(cts.Token));
-            isNotifying = true;
         }
     }
 
     private async Task Execute(CancellationToken token)
     {
-        while (!observers.IsEmpty && !token.IsCancellationRequested)
+        while (!token.IsCancellationRequested)
         {
+            if(observers.IsEmpty && incomming.IsEmpty)
+            {
+                isNotifying = false;
+                return;
+            }
+
             try
             {
                 await Poll();
@@ -144,7 +151,6 @@ public class StorageAreaLogObserver<TJson>(SqlServerStorageAreaLog<TJson> log, l
                 return;
             }
         }
-        isNotifying = false;
     }
 
     private async Task Poll()
