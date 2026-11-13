@@ -1,5 +1,7 @@
 ﻿using System.Data;
 using System.Data.SqlClient;
+using System.Xml.Linq;
+using Dapper;
 
 namespace DotJEM.Json.Storage2.SqlServer.Initialization;
 
@@ -90,10 +92,10 @@ public class SqlServerAreaStateManager : ISqlServerSchemaStateManager
         string schemaTableCommandText = SqlTemplates.CreateSchemasTable(Schema, AreaName); // SqlServerStatements.Load("CreateSchemasTable", map);
 
         //await using SqlConnection connection = connectionFactory.Create();
-        using SqlConnection connection = connectionFactory.Create();
-        await connection.OpenAsync().ConfigureAwait(false);
 
         //await using SqlTransaction transaction = connection.BeginTransaction(IsolationLevel.ReadUncommitted);
+
+        using SqlConnection connection = connectionFactory.Create();
         using SqlTransaction transaction = connection.BeginTransaction(IsolationLevel.ReadUncommitted);
         await Execute(dataTableCommandText, connection, transaction);
         await Execute(logTableCommandText, connection, transaction);

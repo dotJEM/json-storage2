@@ -1,10 +1,11 @@
-﻿using System.Collections.Concurrent;
+﻿using Dapper;
+using DotJEM.Json.Storage2.SqlServer.Initialization;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
 using System.Threading;
 using System.Threading.Tasks;
-using DotJEM.Json.Storage2.SqlServer.Initialization;
 
 namespace DotJEM.Json.Storage2.SqlServer;
 
@@ -29,12 +30,14 @@ public class AreaInfo
 public class SqlServerStorageAreaFactory
 {
     private readonly ISqlServerSchemaStateManager schema;
+    private readonly ISqlServerConnectionFactory connectionFactory;
     private readonly Dictionary<string, AreaInfo> areas;
     private readonly SemaphoreSlim padlock = new(1, 1);
 
-    public SqlServerStorageAreaFactory(ISqlServerSchemaStateManager schemaState, Dictionary<string, AreaInfo>? areas = null)
+    public SqlServerStorageAreaFactory(ISqlServerSchemaStateManager schemaState, ISqlServerConnectionFactory connectionFactory, Dictionary<string, AreaInfo>? areas = null)
     {
         this.schema = schemaState;
+        this.connectionFactory = connectionFactory;
         this.areas = areas ?? new Dictionary<string, AreaInfo>();
     }
 
@@ -46,11 +49,18 @@ public class SqlServerStorageAreaFactory
 
         await padlock.WaitAsync().ConfigureAwait(false);
 
-        context.CommandFactory.Create()
-
-        AreaInfo area = new(name, new(context.ConnectionFactory, schema.Schema, name, false));
+        AreaInfo area = new(name, new(context.ConnectionFactory, schema.Schema, name, await ExistsInDatabase<TJson>(name)));
         areas.Add(name, area);
         padlock.Release();
         return new(context, area.State);
+    }
+
+    private async Task<bool> ExistsInDatabase<TJson>(string name)
+    {
+        string tableExists = SqlTemplates.DataTableExists(schema.Schema, name);
+        using SqlConnection connection = connectionFactory.Create();
+        await connection.OpenAsync().ConfigureAwait(false);
+        var result = await connection.ExecuteScalarAsync<int>(tableExists).ConfigureAwait(false);
+        return result == 1;
     }
 }

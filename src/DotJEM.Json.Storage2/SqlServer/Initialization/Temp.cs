@@ -25,7 +25,9 @@ public static class Temp
         if (schemaExists == 0)
         {
             //TODO: Needs to pass a state object to track creation of schema.
-            return new SqlServerStorageAreaFactory(new SqlServerSchemaStateManager(connectionFactory, schema, false));
+            return new SqlServerStorageAreaFactory(
+                new SqlServerSchemaStateManager(connectionFactory, schema, false),
+                connectionFactory);
         }
 
         await using SqlCommand command2 = new(SqlTemplates.SelectTableNames());
@@ -47,7 +49,9 @@ public static class Temp
             .ToDictionary(name => name, name =>
                 new AreaInfo(name, new SqlServerAreaStateManager(connectionFactory, schema, name, true)));
 
-        return new SqlServerStorageAreaFactory(new SqlServerSchemaStateManager(connectionFactory, schema, true), areas);
+        return new SqlServerStorageAreaFactory(new SqlServerSchemaStateManager(connectionFactory, schema, true), 
+            connectionFactory,
+            areas);
     }
 
 
