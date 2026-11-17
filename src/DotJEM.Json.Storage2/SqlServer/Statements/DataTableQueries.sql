@@ -26,6 +26,7 @@ SELECT [Id]
       ,[Updated]
       ,[CreatedBy]
       ,[UpdatedBy]
+      ,[Meta]
       ,[Data]
       ,[RV]
   FROM [@{schema}].[@{area_name}.data]
@@ -40,6 +41,7 @@ SELECT [Id]
       ,[Updated]
       ,[CreatedBy]
       ,[UpdatedBy]
+      ,[Meta]
       ,[Data]
       ,[RV]
   FROM [@{schema}].[@{area_name}.data]
@@ -55,9 +57,10 @@ INSERT INTO [@{schema}].[@{area_name}.data]
            ,[Updated]
            ,[CreatedBy]
            ,[UpdatedBy]
+           ,[Meta]
            ,[Data])
-     OUTPUT 'C', INSERTED.[Id], INSERTED.[Version], @timestamp, INSERTED.[CreatedBy], INSERTED.[Data] 
-		INTO [@{schema}].[@{area_name}.log]([Event], [Id], [Version], [Time], [User], [Data])
+     OUTPUT 'C', INSERTED.[Id], INSERTED.[Version], @timestamp, INSERTED.[CreatedBy], INSERTED.[Meta], INSERTED.[Data] 
+		INTO [@{schema}].[@{area_name}.log]([Event], [Id], [Version], [Time], [User], [Meta], [Data])
      OUTPUT 
             INSERTED.[Id]
      VALUES
@@ -67,6 +70,7 @@ INSERT INTO [@{schema}].[@{area_name}.data]
            ,@timestamp
            ,@user
            ,@user
+           ,@meta
            ,@data);
 --end
 
@@ -75,17 +79,18 @@ UPDATE [@{schema}].[@{area_name}.data]
    SET [Version] = [Version] + 1
       ,[Updated] = @timestamp
 	  ,[UpdatedBy] = @user
+      ,[Meta] = @dmeta
       ,[Data] = @data
-	  OUTPUT 'U', INSERTED.[Id], INSERTED.[Version], @timestamp, @user, INSERTED.[Data]
-		INTO [@{schema}].[@{area_name}.log]([Event], [Id], [Version], [Time], [User], [Data])
+	  OUTPUT 'U', INSERTED.[Id], INSERTED.[Version], @timestamp, @user, INSERTED.[Meta], INSERTED.[Data]
+		INTO [@{schema}].[@{area_name}.log]([Event], [Id], [Version], [Time], [User], [Meta], [Data])
 	  OUTPUT INSERTED.[ContentType], INSERTED.[Version], INSERTED.[Created], INSERTED.[CreatedBy]
  WHERE [Id] = @id;
 --end
 
 --start:Delete
  DELETE FROM [@{schema}].[@{area_name}.data]
-	  OUTPUT 'D', DELETED.[Id], -1, @timestamp, @user, '{}' 
-		INTO [@{schema}].[@{area_name}.log]([Event], [Id], [Version], [Time], [User], [Data])
+	  OUTPUT 'D', DELETED.[Id], -1, @timestamp, @user, '{}', '{}' 
+		INTO [@{schema}].[@{area_name}.log]([Event], [Id], [Version], [Time], [User], [Meta], [Data])
 	  OUTPUT DELETED.[Id]
             ,DELETED.[ContentType]
             ,DELETED.[Version]
@@ -93,6 +98,7 @@ UPDATE [@{schema}].[@{area_name}.data]
             ,DELETED.[Updated]
             ,DELETED.[CreatedBy]
             ,DELETED.[UpdatedBy]
+            ,DELETED.[Meta]
             ,DELETED.[Data]
  WHERE [Id] = @id;
 --end

@@ -6,6 +6,7 @@ CREATE TABLE [@{schema}].[@{area_name}.log] (
     [Time] [datetime2] NOT NULL,
     [User] [nvarchar](256) NULL, 
     [Version] [int] NOT NULL,
+    [Meta] [nvarchar](max) NOT NULL,
     [Data] [nvarchar](max) NOT NULL,
     CONSTRAINT [PK_@{area_name}.log] PRIMARY KEY CLUSTERED ( [Revision] ASC )
     WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
@@ -25,6 +26,7 @@ SELECT TOP (@count)
        ,dataTable.[Updated]
        ,dataTable.[CreatedBy]
        ,dataTable.[UpdatedBy]
+       ,dataTable.[Meta]
        ,dataTable.[Data]
 FROM (
     SELECT MAX([Revision]) as Latest
