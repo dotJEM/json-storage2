@@ -57,7 +57,7 @@ public class SqlServerStorageAreaFactory
 
     private async Task<bool> ExistsInDatabase<TJson>(string name)
     {
-        string tableExists = SqlTemplates.DataTableExists(schema.Schema, name);
+        string tableExists = DataTableQueries.Exists(schema.Schema, name);
         using SqlConnection connection = connectionFactory.Create();
         await connection.OpenAsync().ConfigureAwait(false);
         var result = await connection.ExecuteScalarAsync<int>(tableExists).ConfigureAwait(false);

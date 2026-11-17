@@ -50,7 +50,7 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
             yield break;
 
         using ISqlServerCommand cmd = context.CommandFactory.Create(
-            SqlTemplates.SelectFromDataTable_Paged(stateManager.Schema, stateManager.AreaName),
+            DataTableQueries.SelectPaged(stateManager.Schema, stateManager.AreaName),
             ("take", take),
             ("skip", skip));
 
@@ -78,7 +78,7 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
             return null;
 
         using ISqlServerCommand cmd = context.CommandFactory.Create(
-            SqlTemplates.SelectFromDataTable_Byid(stateManager.Schema, stateManager.AreaName),
+            DataTableQueries.SelectById(stateManager.Schema, stateManager.AreaName),
             ("id", id));
         
         using ISqlServerDataReader<StorageObject<TJson>> read = await cmd
@@ -113,7 +113,7 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
         string userName = obj.CreatedBy ?? context.AuditInformation.UserName;
 
         using ISqlServerCommand cmd = context.CommandFactory.Create(
-            SqlTemplates.InsertIntoDataTable(stateManager.Schema, stateManager.AreaName),
+            DataTableQueries.Insert(stateManager.Schema, stateManager.AreaName),
             ("contentType", obj.ContentType),
             ("timestamp", timeStamp),
             ("user", userName),
@@ -145,7 +145,7 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
         string userName = obj.UpdatedBy ?? context.AuditInformation.UserName;
 
         using ISqlServerCommand cmd = context.CommandFactory.Create(
-            SqlTemplates.UpdateDataTable(stateManager.Schema, stateManager.AreaName),
+            DataTableQueries.Update(stateManager.Schema, stateManager.AreaName),
             ("id", obj.Id),
             ("timestamp", timeStamp),
             ("user", userName),
@@ -179,7 +179,7 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
         string userName = obj.UpdatedBy ?? context.AuditInformation.UserName;
 
         using ISqlServerCommand cmd = context.CommandFactory.Create(
-            SqlTemplates.DeleteFromDataTable(stateManager.Schema, stateManager.AreaName),
+            DataTableQueries.Delete(stateManager.Schema, stateManager.AreaName),
             ("id", obj.Id),
             ("timestamp", timeStamp),
             ("user", userName));

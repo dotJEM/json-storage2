@@ -1,4 +1,0 @@
-﻿SELECT TOP 1 COUNT(*)
-  FROM INFORMATION_SCHEMA.TABLES
-  WHERE TABLE_SCHEMA = '@{schema}'
-    AND TABLE_NAME = '@{area_name}.data';

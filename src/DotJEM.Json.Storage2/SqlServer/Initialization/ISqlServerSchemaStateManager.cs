@@ -37,7 +37,7 @@ public class SqlServerSchemaStateManager : ISqlServerSchemaStateManager
         if (created)
             return created;
 
-        string commandText = SqlTemplates.CreateSchema(Schema);
+        string commandText = SchemaQueries.CreateSchema(Schema);
 
         await using SqlConnection connection = connectionFactory.Create();
         await using SqlCommand command = new SqlCommand(commandText, connection);
@@ -87,9 +87,9 @@ public class SqlServerAreaStateManager : ISqlServerSchemaStateManager
         if (created)
             return created;
 
-        string dataTableCommandText = SqlTemplates.CreateDataTable(Schema, AreaName);//  SqlServerStatements.Load("CreateDataTable", map);
-        string logTableCommandText = SqlTemplates.CreateLogTable(Schema, AreaName); // SqlServerStatements.Load("CreateLogTable", map);
-        string schemaTableCommandText = SqlTemplates.CreateSchemasTable(Schema, AreaName); // SqlServerStatements.Load("CreateSchemasTable", map);
+        string dataTableCommandText = DataTableQueries.CreateTable(Schema, AreaName);
+        string logTableCommandText = LogTableQueries.CreateTable(Schema, AreaName); 
+        string schemaTableCommandText = SchemaTableQueries.CreateTable(Schema, AreaName);
 
         //await using SqlConnection connection = connectionFactory.Create();
 

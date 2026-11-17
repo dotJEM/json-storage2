@@ -17,7 +17,7 @@ public class SqlServerStorageAreaLog<TJson>(
             return 0;
 
         using ISqlServerCommand cmd = context.CommandFactory.Create(
-            SqlTemplates.SelectFromChangeLogTable_LatestGeneration(stateManager.Schema, stateManager.AreaName));
+            LogTableQueries.SelectLatestGeneration(stateManager.Schema, stateManager.AreaName));
         return await cmd.ExecuteScalarAsync<long>(CancellationToken.None);
     }
 
@@ -30,7 +30,7 @@ public class SqlServerStorageAreaLog<TJson>(
             return new ChangeCollection<TJson>([]);
 
         using ISqlServerCommand cmd = context.CommandFactory.Create(
-            SqlTemplates.SelectFromChangeLogTable_Paged(stateManager.Schema, stateManager.AreaName),
+            LogTableQueries.SelectPaged(stateManager.Schema, stateManager.AreaName),
             ("count", count),
             ("start", generation));
 

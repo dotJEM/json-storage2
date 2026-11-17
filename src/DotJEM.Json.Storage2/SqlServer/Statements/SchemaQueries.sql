@@ -1,0 +1,16 @@
+--start:CreateSchema
+CREATE SCHEMA [@{schema}];
+--end
+
+--start:Exists
+SELECT ISNULL(
+    (SELECT TOP 1 1 FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = @schema), 0);
+--end
+
+--start:SelectTableNames
+SELECT 
+	TABLE_NAME
+  FROM INFORMATION_SCHEMA.TABLES
+ WHERE TABLE_SCHEMA = @schema 
+   AND TABLE_TYPE = 'BASE TABLE';
+--end

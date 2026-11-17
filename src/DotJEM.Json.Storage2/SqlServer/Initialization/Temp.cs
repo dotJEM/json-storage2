@@ -16,7 +16,7 @@ public static class Temp
         await using SqlConnection connection = connectionFactory.Create();
         await connection.OpenAsync().ConfigureAwait(false);
 
-        await using SqlCommand command = new(SqlTemplates.SelectSchemaExists());
+        await using SqlCommand command = new(SchemaQueries.Exists());
         command.Parameters.Add("schema", SqlDbType.NVarChar).Value = schema;
         command.Connection = connection;
 
@@ -30,7 +30,7 @@ public static class Temp
                 connectionFactory);
         }
 
-        await using SqlCommand command2 = new(SqlTemplates.SelectTableNames());
+        await using SqlCommand command2 = new(SchemaQueries.SelectTableNames());
         command2.Parameters.Add(new SqlParameter("schema", SqlDbType.NVarChar)).Value = schema;
         command2.Connection = connection;
 

@@ -1,45 +1,49 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFrameworks>net9.0;net10.0</TargetFrameworks>
-    <LangVersion>latest</LangVersion>
-	  <ImplicitUsings>enable</ImplicitUsings>
-	  <Nullable>enable</Nullable>
-	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
+	<PropertyGroup>
+		<TargetFrameworks>net10.0;net11.0</TargetFrameworks>
+		<LangVersion>latest</LangVersion>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 
-	  <GenerateDocumentationFile>True</GenerateDocumentationFile>
-	  <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-	  <Authors>DotJEM</Authors>
-	  <Copyright>Copyright © DotJEM 2023</Copyright>
-	  <Description></Description>
-	  <IncludeSymbols>False</IncludeSymbols>
-	  <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<Authors>DotJEM</Authors>
+		<Copyright>Copyright © DotJEM 2023</Copyright>
+		<Description></Description>
+		<IncludeSymbols>False</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 
-	  <AssemblyName>$(MSBuildProjectName)</AssemblyName>
-	  <RootNamespace>$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+		<AssemblyName>$(MSBuildProjectName)</AssemblyName>
+		<RootNamespace>$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
 
-	  <Version></Version>
-	  <PackageVersion></PackageVersion>
-	  <InformationalVersion></InformationalVersion>
-	  <PackageVersion></PackageVersion>
-	  <AssemblyVersion></AssemblyVersion>
-	  <FileVersion></FileVersion>
+		<Version></Version>
+		<PackageVersion></PackageVersion>
+		<InformationalVersion></InformationalVersion>
+		<PackageVersion></PackageVersion>
+		<AssemblyVersion></AssemblyVersion>
+		<FileVersion></FileVersion>
 
-	  <PackageIcon>avatar.png</PackageIcon>
-	  <PackageReadmeFile>README.md</PackageReadmeFile>
-  </PropertyGroup>
+		<PackageIcon>avatar.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="SqlServer\Statements\*.sql" />
-  </ItemGroup>
+	<PropertyGroup>
+		<DotJEMFileAsClassName>true</DotJEMFileAsClassName>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <AdditionalFiles Include="SqlServer\Statements\*.sql" TemplateClass="SqlTemplates" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Remove="SqlServer\Statements\*.sql" />
+	</ItemGroup>
 
-  <ItemGroup>
+	<ItemGroup>
+		<AdditionalFiles Include="SqlServer\Statements\*.sql" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="Dapper" Version="2.1.89" />
-		<PackageReference Include="DotJEM.SourceGen.TemplateGenerator" Version="0.1.13-beta001" PrivateAssets="all" />
+		<PackageReference Include="DotJEM.SourceGen.TemplateGenerator" Version="1.0.21" PrivateAssets="all" />
 		<PackageReference Include="System.Data.SqlClient" Version="4.9.1" />
 	</ItemGroup>
 
