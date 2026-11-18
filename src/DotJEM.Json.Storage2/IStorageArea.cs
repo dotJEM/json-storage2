@@ -17,12 +17,16 @@ public interface IStorageArea<TJson>
 
     Task<StorageObject<TJson>?> GetAsync(Guid id);
     Task<StorageObject<TJson>?> GetAsync(Guid id, CancellationToken cancellation);
-    Task<StorageObject<TJson>> InsertAsync(string contentType, TJson obj);
-    Task<StorageObject<TJson>> InsertAsync(string contentType, TJson obj, CancellationToken cancellation);
+    Task<StorageObject<TJson>> InsertAsync(string contentType, TJson data);
+    Task<StorageObject<TJson>> InsertAsync(string contentType, TJson data, TJson meta);
+    Task<StorageObject<TJson>> InsertAsync(string contentType, TJson data, CancellationToken cancellation);
+    Task<StorageObject<TJson>> InsertAsync(string contentType, TJson data, TJson meta, CancellationToken cancellation);
     Task<StorageObject<TJson>> InsertAsync(InsertStorageObject<TJson> obj);
     Task<StorageObject<TJson>> InsertAsync(InsertStorageObject<TJson> obj, CancellationToken cancellation);
     Task<StorageObject<TJson>> UpdateAsync(Guid id, TJson obj);
+    Task<StorageObject<TJson>> UpdateAsync(Guid id, TJson obj, TJson meta);
     Task<StorageObject<TJson>> UpdateAsync(Guid id, TJson obj, CancellationToken cancellation);
+    Task<StorageObject<TJson>> UpdateAsync(Guid id, TJson obj, TJson meta, CancellationToken cancellation);
     Task<StorageObject<TJson>> UpdateAsync(UpdateStorageObject<TJson> obj);
     Task<StorageObject<TJson>> UpdateAsync(UpdateStorageObject<TJson> obj, CancellationToken cancellation);
     Task<StorageObject<TJson>?> DeleteAsync(Guid id);

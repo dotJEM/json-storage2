@@ -45,7 +45,8 @@ public class SqlServerStorageAreaLog<TJson>(
                 row.GetDateTime("Updated"),
                 row.GetString("CreatedBy"),
                 row.GetString("UpdatedBy"),
-                context.JsonConverter.Parse(row.GetString("Data"))
+                context.JsonConverter.Parse(row.GetString("Data")),
+                context.JsonConverter.Parse(row.GetString("Meta"))
                 )
         ), CancellationToken.None);
 

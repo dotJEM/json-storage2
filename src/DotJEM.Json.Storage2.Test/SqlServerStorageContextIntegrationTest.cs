@@ -1,23 +1,12 @@
 ﻿using DotJEM.Json.Storage2.SqlServer;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using System.Text.Json.Serialization;
 
 namespace DotJEM.Json.Storage2.Test;
 
-public class NewtonsoftJsonConverter : IJsonConverter<JObject>
-{
-    public JObject Parse(string json)
-    {
-        return JObject.Parse(json);
-    }
 
-    public string ToString(JObject document, bool indent = false)
-    {
-        return document.ToString(indent ? Formatting.Indented : Formatting.None);
-    }
-}
+
 
 public class SqlServerStorageContextIntegrationTest
 {

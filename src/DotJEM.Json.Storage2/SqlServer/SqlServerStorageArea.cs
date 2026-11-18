@@ -54,7 +54,7 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
             ("take", take),
             ("skip", skip));
 
-        ISqlServerDataReader<StorageObject<TJson>> read = await cmd.ExecuteReaderAsync(row => new StorageObject<TJson>(
+        using ISqlServerDataReader<StorageObject<TJson>> read = await cmd.ExecuteReaderAsync(row => new StorageObject<TJson>(
             row.GetString("ContentType"),
             row.GetGuid("Id"),
             row.GetInt32("Version"),
@@ -62,6 +62,7 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
             row.GetDateTime("Updated"),
             row.GetString("CreatedBy"),
             row.GetString("UpdatedBy"),
+            context.JsonConverter.Parse(row.GetString("Meta")),
             context.JsonConverter.Parse(row.GetString("Data"))
         ), CancellationToken.None);
 
@@ -80,28 +81,33 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
         using ISqlServerCommand cmd = context.CommandFactory.Create(
             DataTableQueries.SelectById(stateManager.Schema, stateManager.AreaName),
             ("id", id));
-        
-        using ISqlServerDataReader<StorageObject<TJson>> read = await cmd
-            .ExecuteReaderAsync(
-                ["Id", "ContentType", "Version", "Created", "Updated", "CreatedBy", "UpdatedBy", "Data"],
-                values => new StorageObject<TJson>(
-                    (string)values[1],
-                    (Guid)values[0],
-                    (int)values[2],
-                    (DateTime)values[3],
-                    (DateTime)values[4],
-                    (string)values[5],
-                    (string)values[6],
-                    context.JsonConverter.Parse((string)values[7])),
-                CancellationToken.None);
+
+        using ISqlServerDataReader<StorageObject<TJson>> read = await cmd.ExecuteReaderAsync(row => new StorageObject<TJson>(
+            row.GetString("ContentType"),
+            row.GetGuid("Id"),
+            row.GetInt32("Version"),
+            row.GetDateTime("Created"),
+            row.GetDateTime("Updated"),
+            row.GetString("CreatedBy"),
+            row.GetString("UpdatedBy"),
+            context.JsonConverter.Parse(row.GetString("Data")),
+            context.JsonConverter.Parse(row.GetString("Meta"))
+        ), CancellationToken.None);
 
         return read.FirstOrDefault();
     }
 
-    public Task<StorageObject<TJson>> InsertAsync(string contentType, TJson obj)
-        => InsertAsync(new InsertStorageObject<TJson>(contentType, obj), CancellationToken.None);
-    public Task<StorageObject<TJson>> InsertAsync(string contentType, TJson obj, CancellationToken cancellation)
-        => InsertAsync(new InsertStorageObject<TJson>(contentType, obj), cancellation);
+    public Task<StorageObject<TJson>> InsertAsync(string contentType, TJson data)
+        => InsertAsync(new InsertStorageObject<TJson>(contentType, data), CancellationToken.None);
+
+    public Task<StorageObject<TJson>> InsertAsync(string contentType, TJson data, TJson meta)
+        => InsertAsync(new InsertStorageObject<TJson>(contentType, data, meta), CancellationToken.None);
+
+    public Task<StorageObject<TJson>> InsertAsync(string contentType, TJson data, CancellationToken cancellation)
+        => InsertAsync(new InsertStorageObject<TJson>(contentType, data), cancellation);
+
+    public Task<StorageObject<TJson>> InsertAsync(string contentType, TJson data, TJson meta, CancellationToken cancellation)
+        => InsertAsync(new InsertStorageObject<TJson>(contentType, data, meta), cancellation);
     public Task<StorageObject<TJson>> InsertAsync(InsertStorageObject<TJson> obj)
         => InsertAsync(obj, CancellationToken.None);
 
@@ -120,7 +126,7 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
             ("data", context.JsonConverter.ToString(obj.Data, false)));
 
         Guid id = await cmd.ExecuteScalarAsync<Guid>(cancellation).ConfigureAwait(false);
-        return new StorageObject<TJson>(obj.ContentType, id, 0, timeStamp, timeStamp, userName, userName, obj.Data);
+        return new StorageObject<TJson>(obj.ContentType, id, 0, timeStamp, timeStamp, userName, userName, obj.Data, obj.Meta);
     }
 
     // This is very back and forth, but maybe switching back to binary would be better for storage and retrieval speeds. In the end, maybe this should be a 
@@ -131,8 +137,13 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
     public Task<StorageObject<TJson>> UpdateAsync(Guid id, TJson obj)
         => UpdateAsync(new UpdateStorageObject<TJson>(string.Empty, id, obj), CancellationToken.None);
 
+    public Task<StorageObject<TJson>> UpdateAsync(Guid id, TJson obj, TJson meta)
+        => UpdateAsync(new UpdateStorageObject<TJson>(string.Empty, id, obj, meta), CancellationToken.None);
     public Task<StorageObject<TJson>> UpdateAsync(Guid id, TJson obj, CancellationToken cancellation)
         => UpdateAsync(new UpdateStorageObject<TJson>(string.Empty, id, obj), cancellation);
+
+    public Task<StorageObject<TJson>> UpdateAsync(Guid id, TJson obj, TJson meta, CancellationToken cancellation)
+        => UpdateAsync(new UpdateStorageObject<TJson>(string.Empty, id, obj, meta), cancellation);
 
     public Task<StorageObject<TJson>> UpdateAsync(UpdateStorageObject<TJson> obj)
         => UpdateAsync(obj, CancellationToken.None);
@@ -149,13 +160,16 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
             ("id", obj.Id),
             ("timestamp", timeStamp),
             ("user", userName),
-            ("data", context.JsonConverter.ToString(obj.Data, false)
-            ));
+            ("data", context.JsonConverter.ToString(obj.Data, false)),
+            ("meta", context.JsonConverter.ToString(obj.Meta, false))
+            );
 
         using ISqlServerDataReader<StorageObject<TJson>> read = await cmd
             .ExecuteReaderAsync(
                 new[] { "ContentType", "Version", "Created", "CreatedBy" },
-                values => new StorageObject<TJson>((string)values[0], obj.Id, (int)values[1], (DateTime)values[2], timeStamp, (string)values[3], userName, obj.Data),
+                values => new StorageObject<TJson>(
+                    (string)values[0], 
+                    obj.Id, (int)values[1], (DateTime)values[2], timeStamp, (string)values[3], userName, obj.Data, obj.Meta),
                 cancellation);
 
         return read.FirstOrDefault();
@@ -184,19 +198,18 @@ public class SqlServerStorageArea<TJson> : IStorageArea<TJson>
             ("timestamp", timeStamp),
             ("user", userName));
 
-        using ISqlServerDataReader<StorageObject<TJson>> read = await cmd
-            .ExecuteReaderAsync(
-                ["Id", "ContentType", "Version", "Created", "Updated", "CreatedBy", "UpdatedBy", "Data"],
-                values => new StorageObject<TJson>(
-                    (string)values[1],
-                    (Guid)values[0],
-                    (int)values[2],
-                    (DateTime)values[3],
-                    (DateTime)values[4],
-                    (string)values[5],
-                    (string)values[6],
-                    context.JsonConverter.Parse((string)values[7])),
-                cancellation);
+        using ISqlServerDataReader<StorageObject<TJson>> read = await cmd.ExecuteReaderAsync(row => new StorageObject<TJson>(
+            row.GetString("ContentType"),
+            row.GetGuid("Id"),
+            row.GetInt32("Version"),
+            row.GetDateTime("Created"),
+            row.GetDateTime("Updated"),
+            row.GetString("CreatedBy"),
+            row.GetString("UpdatedBy"),
+            context.JsonConverter.Parse(row.GetString("Data")),
+            context.JsonConverter.Parse(row.GetString("Meta"))
+        ), CancellationToken.None);
+
         return read.FirstOrDefault();
     }
 }

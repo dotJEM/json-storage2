@@ -10,12 +10,13 @@ public enum StorageEvent
 public record StorageChange<TJson>(long Revision, StorageEvent Event, StorageObject<TJson> Object);
 
 /// <summary/>
-public record StorageObject<TJson>(string ContentType, Guid Id, int Version, DateTime Created, DateTime Updated, string CreatedBy, string UpdatedBy, TJson Data)
+public record StorageObject<TJson>(string ContentType, Guid Id, int Version, DateTime Created, DateTime Updated, string CreatedBy, string UpdatedBy,  TJson Data, TJson? Meta)
 {
     /// <summary/>
     public override string ToString()
     {
         return $"{ContentType}/{Id} Version={Version}, Created={Created:O} By={CreatedBy}, Updated={Updated:O} By={UpdatedBy}" +
+               $"{Environment.NewLine}{Meta}" +
                $"{Environment.NewLine}{Data}";
     }
 
@@ -28,7 +29,7 @@ public record StorageObject<TJson>(string ContentType, Guid Id, int Version, Dat
     /// properties, and leaves the rest for the <see cref="IStorageArea"/> to manage.
     /// </remarks>
     public static implicit operator UpdateStorageObject<TJson>(StorageObject<TJson> o)
-        => new(o.ContentType, o.Id, o.Data);
+        => new(o.ContentType, o.Id, o.Meta, o.Data);
 
     /// <summary>
     /// Converts <see cref="StorageObject"/> into an <see cref="InsertStorageObject"/>
@@ -39,7 +40,7 @@ public record StorageObject<TJson>(string ContentType, Guid Id, int Version, Dat
     /// properties, and leaves the rest for the <see cref="IStorageArea"/> to manage.
     /// </remarks>
     public static implicit operator InsertStorageObject<TJson>(StorageObject<TJson> o)
-        => new(o.ContentType, o.Data);
+        => new(o.ContentType, o.Meta, o.Data);
 }
 
 /// <summary>
@@ -50,7 +51,7 @@ public record StorageObject<TJson>(string ContentType, Guid Id, int Version, Dat
 /// <param name="Data"></param>
 /// <param name="Updated"></param>
 /// <param name="UpdatedBy"></param>
-public record UpdateStorageObject<TJson>(string ContentType, Guid Id, TJson Data, DateTime? Updated = null, string? UpdatedBy = null);
+public record UpdateStorageObject<TJson>(string ContentType, Guid Id,  TJson Data, TJson? Meta = default, DateTime? Updated = null, string? UpdatedBy = null);
 
 /// <summary>
 /// 
@@ -59,7 +60,7 @@ public record UpdateStorageObject<TJson>(string ContentType, Guid Id, TJson Data
 /// <param name="Data"></param>
 /// <param name="Created"></param>
 /// <param name="CreatedBy"></param>
-public record InsertStorageObject<TJson>(string ContentType, TJson Data, DateTime? Created = null, string? CreatedBy = null);
+public record InsertStorageObject<TJson>(string ContentType, TJson Data, TJson? Meta = default, DateTime? Created = null, string? CreatedBy = null);
 
 /// <summary>
 /// 
